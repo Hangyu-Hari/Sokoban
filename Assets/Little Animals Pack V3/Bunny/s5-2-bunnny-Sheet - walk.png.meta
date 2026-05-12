@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 3f9046a1d69c0ca4382b8a535de1462b
+guid: e61807d1d7c503d44af8b6b41af052a3
 TextureImporter:
   internalIDToNameTable: []
   externalObjects: {}
@@ -97,11 +97,11 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: tileset_0
+      name: s5-2-bunnny-Sheet - walk_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 64
+        x: 8
+        y: 104
         width: 16
         height: 16
       alignment: 0
@@ -111,18 +111,18 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: bb41b6ac03aeb114c817cbf4433591bd
-      internalID: 1830575607
+      spriteID: 1b2401aea8ba70b4eb916c9b89b4c044
+      internalID: 1793717289
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: tileset_1
+      name: s5-2-bunnny-Sheet - walk_1
       rect:
         serializedVersion: 2
-        x: 16
-        y: 64
+        x: 40
+        y: 104
         width: 16
         height: 16
       alignment: 0
@@ -132,18 +132,18 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 8f2f438b653a4ba4490609ebaf7c276f
-      internalID: 892568960
+      spriteID: bd6acff833ad3f94085227f6392c9bc4
+      internalID: 956332959
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: tileset_2
+      name: s5-2-bunnny-Sheet - walk_2
       rect:
         serializedVersion: 2
-        x: 32
-        y: 64
+        x: 72
+        y: 104
         width: 16
         height: 16
       alignment: 0
@@ -153,18 +153,18 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 70ddfa854e5cf3b44bbeadb9e32ac5d0
-      internalID: 1355734245
+      spriteID: 14c545b7fc2159f4e975d4014d83c72f
+      internalID: 769898080
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: tileset_3
+      name: s5-2-bunnny-Sheet - walk_3
       rect:
         serializedVersion: 2
-        x: 48
-        y: 64
+        x: 104
+        y: 104
         width: 16
         height: 16
       alignment: 0
@@ -174,18 +174,18 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 8f9dfd18f6d98ad4f8dc362a665b61e8
-      internalID: 224644050
+      spriteID: a666a7adef041614eb14979ae00c1d09
+      internalID: 373035300
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: tileset_4
+      name: s5-2-bunnny-Sheet - walk_4
       rect:
         serializedVersion: 2
-        x: 64
-        y: 64
+        x: 8
+        y: 72
         width: 16
         height: 16
       alignment: 0
@@ -195,18 +195,18 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 7d7797685a488b64a8343f9ddff1ad24
-      internalID: 983961905
+      spriteID: 6a292b26299707b4a9e5e4b5dc91cda1
+      internalID: -1461468525
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: tileset_5
+      name: s5-2-bunnny-Sheet - walk_5
       rect:
         serializedVersion: 2
-        x: 0
-        y: 48
+        x: 40
+        y: 72
         width: 16
         height: 16
       alignment: 0
@@ -216,18 +216,18 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 7717774ab722a5845919d70da786c6a0
-      internalID: -1772315237
+      spriteID: 322a203c1be6e1c4aa446a7b59065ed9
+      internalID: -246348975
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: tileset_6
+      name: s5-2-bunnny-Sheet - walk_6
       rect:
         serializedVersion: 2
-        x: 16
-        y: 48
+        x: 72
+        y: 72
         width: 16
         height: 16
       alignment: 0
@@ -237,18 +237,18 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: b6aa96d50a87672428fba360b5e38e7c
-      internalID: 955864534
+      spriteID: 16172af2ad7c91248aaacb8fd1a7ba1f
+      internalID: -692178790
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: tileset_7
+      name: s5-2-bunnny-Sheet - walk_7
       rect:
         serializedVersion: 2
-        x: 32
-        y: 48
+        x: 104
+        y: 72
         width: 16
         height: 16
       alignment: 0
@@ -258,18 +258,18 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 45f3b2b6f94c24a49acbfffb2582a7e5
-      internalID: -128833556
+      spriteID: c2711857c8f597f40865b3aec6475bb4
+      internalID: -647528484
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: tileset_8
+      name: s5-2-bunnny-Sheet - walk_8
       rect:
         serializedVersion: 2
-        x: 48
-        y: 48
+        x: 8
+        y: 40
         width: 16
         height: 16
       alignment: 0
@@ -279,18 +279,18 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: ab6deb0dc0e1b164ab2bfecc7a7604d7
-      internalID: 2095601035
+      spriteID: 3c27cda130211534080d4dc503a7707b
+      internalID: -1128049484
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: tileset_9
+      name: s5-2-bunnny-Sheet - walk_9
       rect:
         serializedVersion: 2
-        x: 64
-        y: 48
+        x: 40
+        y: 40
         width: 16
         height: 16
       alignment: 0
@@ -300,18 +300,18 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 4d0b7778075fb6641bc4b9e7475a1802
-      internalID: 971335269
+      spriteID: c493ef088d8709f468b43cda53e67210
+      internalID: 1423658303
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: tileset_10
+      name: s5-2-bunnny-Sheet - walk_10
       rect:
         serializedVersion: 2
-        x: 0
-        y: 32
+        x: 72
+        y: 40
         width: 16
         height: 16
       alignment: 0
@@ -321,18 +321,18 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 83caa924276c2984788bbddf19d1ddc5
-      internalID: 1233161712
+      spriteID: 628635e5d1f23004ea5a66240de6e42d
+      internalID: -267148939
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: tileset_11
+      name: s5-2-bunnny-Sheet - walk_11
       rect:
         serializedVersion: 2
-        x: 16
-        y: 32
+        x: 104
+        y: 40
         width: 16
         height: 16
       alignment: 0
@@ -342,18 +342,18 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 3c380176e82ae414baa98c6c97447ac6
-      internalID: 155966367
+      spriteID: e5024798b935e584380b907a66d47467
+      internalID: -707305708
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: tileset_12
+      name: s5-2-bunnny-Sheet - walk_12
       rect:
         serializedVersion: 2
-        x: 32
-        y: 32
+        x: 8
+        y: 8
         width: 16
         height: 16
       alignment: 0
@@ -363,18 +363,18 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 26b6e5a89c2ec1349ad3b8857e00f8cd
-      internalID: 735964225
+      spriteID: cb393ed23129ac8449d55af090e2edb8
+      internalID: 486612946
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: tileset_13
+      name: s5-2-bunnny-Sheet - walk_13
       rect:
         serializedVersion: 2
-        x: 48
-        y: 32
+        x: 40
+        y: 8
         width: 16
         height: 16
       alignment: 0
@@ -384,18 +384,18 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 5cdb2969950e7cc46917b93362af5aae
-      internalID: 1672826288
+      spriteID: c878493352b82294aa3fa153dc87367d
+      internalID: -910548530
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: tileset_14
+      name: s5-2-bunnny-Sheet - walk_14
       rect:
         serializedVersion: 2
-        x: 64
-        y: 32
+        x: 72
+        y: 8
         width: 16
         height: 16
       alignment: 0
@@ -405,18 +405,18 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: e73fc95c82685df45b8b83ea795d8648
-      internalID: -658586000
+      spriteID: 9a526662010f7d348af98a210afc36cf
+      internalID: -1008851851
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: tileset_15
+      name: s5-2-bunnny-Sheet - walk_15
       rect:
         serializedVersion: 2
-        x: 0
-        y: 16
+        x: 104
+        y: 8
         width: 16
         height: 16
       alignment: 0
@@ -426,197 +426,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: de0a68773011de84aaafc178abb7af31
-      internalID: 615549234
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: tileset_16
-      rect:
-        serializedVersion: 2
-        x: 16
-        y: 16
-        width: 16
-        height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: 849f4eb4c93e6c549828203cd3a9a0b2
-      internalID: 927387892
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: tileset_17
-      rect:
-        serializedVersion: 2
-        x: 32
-        y: 16
-        width: 16
-        height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: 9969801b1c4d2ad45b7c31a03d34f4f1
-      internalID: 1579792990
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: tileset_18
-      rect:
-        serializedVersion: 2
-        x: 48
-        y: 16
-        width: 16
-        height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: 042bb2412e78d3047bdc8e509beae365
-      internalID: -205519856
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: tileset_19
-      rect:
-        serializedVersion: 2
-        x: 64
-        y: 16
-        width: 16
-        height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: 85c4452700be2134cbd64e2fd5083101
-      internalID: 731926025
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: tileset_20
-      rect:
-        serializedVersion: 2
-        x: 0
-        y: 0
-        width: 16
-        height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: 0dcd399f3423ef9408c124d38419cc0f
-      internalID: -1404358781
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: tileset_21
-      rect:
-        serializedVersion: 2
-        x: 16
-        y: 0
-        width: 16
-        height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: 179baee3e49b1654cb6bab569a9c979c
-      internalID: 1565695174
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: tileset_22
-      rect:
-        serializedVersion: 2
-        x: 32
-        y: 0
-        width: 16
-        height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: 9651a5a067f158c4d806c69f5dd3c543
-      internalID: -1862805737
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: tileset_23
-      rect:
-        serializedVersion: 2
-        x: 48
-        y: 0
-        width: 16
-        height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: ca96ec3f41ffa104684e9dbfdac15a99
-      internalID: -1647949541
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: tileset_24
-      rect:
-        serializedVersion: 2
-        x: 64
-        y: 0
-        width: 16
-        height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: 43118bf4138581c458b332c6eb88bbd9
-      internalID: -285055942
+      spriteID: 8bc7ffa29e184db488f1cd565672c966
+      internalID: 1051384724
       vertices: []
       indices: 
       edges: []
@@ -632,31 +443,22 @@ TextureImporter:
     weights: []
     secondaryTextures: []
     nameFileIdTable:
-      tileset_0: 1830575607
-      tileset_1: 892568960
-      tileset_10: 1233161712
-      tileset_11: 155966367
-      tileset_12: 735964225
-      tileset_13: 1672826288
-      tileset_14: -658586000
-      tileset_15: 615549234
-      tileset_16: 927387892
-      tileset_17: 1579792990
-      tileset_18: -205519856
-      tileset_19: 731926025
-      tileset_2: 1355734245
-      tileset_20: -1404358781
-      tileset_21: 1565695174
-      tileset_22: -1862805737
-      tileset_23: -1647949541
-      tileset_24: -285055942
-      tileset_3: 224644050
-      tileset_4: 983961905
-      tileset_5: -1772315237
-      tileset_6: 955864534
-      tileset_7: -128833556
-      tileset_8: 2095601035
-      tileset_9: 971335269
+      s5-2-bunnny-Sheet - walk_0: 1793717289
+      s5-2-bunnny-Sheet - walk_1: 956332959
+      s5-2-bunnny-Sheet - walk_10: -267148939
+      s5-2-bunnny-Sheet - walk_11: -707305708
+      s5-2-bunnny-Sheet - walk_12: 486612946
+      s5-2-bunnny-Sheet - walk_13: -910548530
+      s5-2-bunnny-Sheet - walk_14: -1008851851
+      s5-2-bunnny-Sheet - walk_15: 1051384724
+      s5-2-bunnny-Sheet - walk_2: 769898080
+      s5-2-bunnny-Sheet - walk_3: 373035300
+      s5-2-bunnny-Sheet - walk_4: -1461468525
+      s5-2-bunnny-Sheet - walk_5: -246348975
+      s5-2-bunnny-Sheet - walk_6: -692178790
+      s5-2-bunnny-Sheet - walk_7: -647528484
+      s5-2-bunnny-Sheet - walk_8: -1128049484
+      s5-2-bunnny-Sheet - walk_9: 1423658303
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
