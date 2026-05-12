@@ -1,24 +1,15 @@
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
-
+/// <summary>
+/// 每个关卡绑定本场景的Tilemap和相机
+/// </summary>
 [DisallowMultipleComponent]
 public sealed class TilemapSettings : MonoBehaviour
 {
     [Header("Tilemaps")]
     [SerializeField] Tilemap groundTilemap;
     [SerializeField] Tilemap objectsTilemap;
-
-    [Header("Tile assets")]
-    [Tooltip("底墙")]
-    [SerializeField] TileBase[] wallBaseTiles;
-    [Tooltip("顶墙")]
-    [SerializeField] TileBase wallCapTile;
-    [Tooltip("地板")]
-    [SerializeField] TileBase[] floorTiles;
-    [SerializeField] TileBase goalTile;
-    [SerializeField] TileBase playerTile;
-    [SerializeField] TileBase boxTile;
 
     [Header("相机设置")]
     [SerializeField] bool centerCameraOnStart = true;
@@ -27,35 +18,58 @@ public sealed class TilemapSettings : MonoBehaviour
     [SerializeField] bool fitOrthographicSize;
     [Tooltip("边缘空隙间距")]
     [SerializeField] float orthographicPadding = 0.5f;
-    
 
     SokobanRuntimeState _state;
 
+    TileAssetSettings Assets => TileAssetSettings.Instance;
+
     void Start()
     {
+        TryBootstrapLevel();
+    }
+
+    bool TryBootstrapLevel()
+    {
+        var assets = Assets;
+        if (assets == null)
+        {
+            Debug.LogError(
+                "[Sokoban] 未找到 TileAssetSettings：请在常驻场景挂一份 TileAssetSettings 并配置瓦片。",
+                this);
+            _state = null;
+            return false;
+        }
+
+        if (groundTilemap == null || objectsTilemap == null)
+        {
+            _state = null;
+            return false;
+        }
+
         if (!SokobanRuntimeState.TryFromTilemaps(
                 groundTilemap,
                 objectsTilemap,
-                wallBaseTiles,
-                wallCapTile,
-                floorTiles,
-                goalTile,
-                playerTile,
-                boxTile,
+                assets.WallBaseTiles,
+                assets.WallCapTile,
+                assets.FloorTiles,
+                assets.GoalTile,
+                assets.PlayerTile,
+                assets.BoxTile,
                 out _state,
                 out var err))
         {
             Debug.LogError("[Sokoban] " + err, this);
-            enabled = false;
-            return;
+            _state = null;
+            return false;
         }
 
-        SokobanRuntimeState.ApplyWallBaseAndCap(groundTilemap, wallBaseTiles, wallCapTile);
-
-        SyncObjectsLayer();
+        SokobanRuntimeState.ApplyWallBaseAndCap(groundTilemap, assets.WallBaseTiles, assets.WallCapTile);
+        SyncObjectsLayer(assets);
 
         if (centerCameraOnStart)
             ApplyCamera();
+
+        return true;
     }
 
     /// <summary> 关卡刷新后如需再对准相机可调用。 </summary>
@@ -98,7 +112,6 @@ public sealed class TilemapSettings : MonoBehaviour
         return world.size.sqrMagnitude > 1e-12f;
     }
 
-    /// <summary> localBounds 的 8 角点变换到世界；失败时由调用方用 Renderer.bounds。 </summary>
     static bool TryWorldBoundsFromTilemapLocalBounds(Tilemap tm, out Bounds world)
     {
         world = default;
@@ -146,6 +159,10 @@ public sealed class TilemapSettings : MonoBehaviour
         if (_state == null)
             return;
 
+        var assets = Assets;
+        if (assets == null)
+            return;
+
         var d = Vector3Int.zero;
         if (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow))
             d = Vector3Int.up;
@@ -162,13 +179,13 @@ public sealed class TilemapSettings : MonoBehaviour
         if (!_state.TryMove(d))
             return;
 
-        SyncObjectsLayer();
+        SyncObjectsLayer(assets);
 
         if (_state.IsWin())
             Debug.Log("[Sokoban] Level complete.", this);
     }
 
-    void SyncObjectsLayer()
+    void SyncObjectsLayer(TileAssetSettings assets)
     {
         var b = _state.Bounds;
         for (int y = b.yMin; y < b.yMax; y++)
@@ -178,8 +195,8 @@ public sealed class TilemapSettings : MonoBehaviour
         }
 
         foreach (var box in _state.Boxes)
-            objectsTilemap.SetTile(box, boxTile);
+            objectsTilemap.SetTile(box, assets.BoxTile);
 
-        objectsTilemap.SetTile(_state.Player, playerTile);
+        objectsTilemap.SetTile(_state.Player, assets.PlayerTile);
     }
 }
