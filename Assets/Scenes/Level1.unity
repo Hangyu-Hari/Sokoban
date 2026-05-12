@@ -227,7 +227,7 @@ Tilemap:
     second:
       serializedVersion: 2
       m_TileIndex: 3
-      m_TileSpriteIndex: 3
+      m_TileSpriteIndex: 4
       m_TileMatrixIndex: 0
       m_TileColorIndex: 0
       m_TileObjectToInstantiateIndex: 65535
@@ -264,10 +264,10 @@ Tilemap:
     m_Data: {fileID: 0}
   - m_RefCount: 0
     m_Data: {fileID: 0}
-  - m_RefCount: 1
-    m_Data: {fileID: 1793717289, guid: e61807d1d7c503d44af8b6b41af052a3, type: 3}
   - m_RefCount: 0
     m_Data: {fileID: 0}
+  - m_RefCount: 1
+    m_Data: {fileID: 1793717289, guid: e61807d1d7c503d44af8b6b41af052a3, type: 3}
   - m_RefCount: 2
     m_Data: {fileID: -1404358781, guid: 3f9046a1d69c0ca4382b8a535de1462b, type: 3}
   m_TileMatrixArray:
@@ -465,7 +465,7 @@ GameObject:
   - component: {fileID: 603816598}
   - component: {fileID: 603816597}
   m_Layer: 0
-  m_Name: SokobanGame
+  m_Name: TileSettings
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -485,16 +485,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   groundTilemap: {fileID: 1927723770}
   objectsTilemap: {fileID: 172149998}
-  wallBaseTiles:
-  - {fileID: 11400000, guid: 982781ff75439934295cdb942343bfac, type: 2}
-  - {fileID: 11400000, guid: de5dad6b581b41c49af13f461cb4adff, type: 2}
-  wallCapTile: {fileID: 11400000, guid: 3095ca6c3f055b342a5fd94cf156f7de, type: 2}
-  floorTiles:
-  - {fileID: 11400000, guid: e183dacf6a1c16d4da45a6c64623cf31, type: 2}
-  - {fileID: 11400000, guid: b24c62bca23a7a6468106e382bc88d34, type: 2}
-  goalTile: {fileID: 11400000, guid: 5fef5d6fcd3e66745a27484d281faf3d, type: 2}
-  playerTile: {fileID: 11400000, guid: 38b3d984466ea2f45966ac71571c48c3, type: 2}
-  boxTile: {fileID: 11400000, guid: a62a846c78f4c054a878b63239bbaa06, type: 2}
+  centerCameraOnStart: 1
+  targetCamera: {fileID: 519420031}
+  fitOrthographicSize: 1
+  orthographicPadding: 1
 --- !u!4 &603816598
 Transform:
   m_ObjectHideFlags: 0
@@ -959,5 +953,5 @@ SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
   - {fileID: 519420032}
-  - {fileID: 429732556}
   - {fileID: 603816598}
+  - {fileID: 429732556}
