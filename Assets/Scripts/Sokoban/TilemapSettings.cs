@@ -20,6 +20,7 @@ public sealed class TilemapSettings : MonoBehaviour
     [SerializeField] float orthographicPadding = 0.5f;
 
     SokobanRuntimeState _state;
+    bool _winCompleteUiShown;
 
     TileAssetSettings Assets => TileAssetSettings.Instance;
 
@@ -69,6 +70,7 @@ public sealed class TilemapSettings : MonoBehaviour
         if (centerCameraOnStart)
             ApplyCamera();
 
+        _winCompleteUiShown = false;
         return true;
     }
 
@@ -163,6 +165,10 @@ public sealed class TilemapSettings : MonoBehaviour
         if (assets == null)
             return;
 
+        var ui = LevelUIManager.Instance;
+        if (ui != null && ui.IsGameplayInputBlocked)
+            return;
+
         var d = Vector3Int.zero;
         if (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow))
             d = Vector3Int.up;
@@ -181,8 +187,12 @@ public sealed class TilemapSettings : MonoBehaviour
 
         SyncObjectsLayer(assets);
 
-        if (_state.IsWin())
+        if (_state.IsWin() && !_winCompleteUiShown)
+        {
+            _winCompleteUiShown = true;
             Debug.Log("[Sokoban] Level complete.", this);
+            LevelUIManager.Instance?.ShowLevelCompleteUI();
+        }
     }
 
     void SyncObjectsLayer(TileAssetSettings assets)
