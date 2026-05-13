@@ -200,6 +200,7 @@ public sealed class TilemapSettings : MonoBehaviour
         {
             _winCompleteUiShown = true;
             Debug.Log("[Sokoban] Level complete.", this);
+            GameSceneManager.Instance?.RegisterUnlockedNextLevelAfterWin();
             LevelUIManager.Instance?.ShowLevelCompleteUI();
         }
     }

@@ -1,14 +1,17 @@
 using System.Text.RegularExpressions;
 using UnityEngine;
+using UnityScene = UnityEngine.SceneManagement.Scene;
 using SceneMgr = UnityEngine.SceneManagement.SceneManager;
 using LoadMode = UnityEngine.SceneManagement.LoadSceneMode;
 using UnitySceneManagement = UnityEngine.SceneManagement;
 
 /// <summary>
-/// 常驻场景管理：按名加载、重开当前关、按场景名中的关卡号加载下一关，以及加载后主相机背景色。
+/// 常驻场景管理：按名加载、重开当前关、按场景名中的关卡号加载下一关、记录最高到达关卡，以及加载后主相机背景色。
 /// </summary>
 public sealed class GameSceneManager : MonoBehaviour
 {
+    public const string MaxUnlockedLevelPrefsKey = "Sokoban.MaxUnlockedLevel";
+
     static GameSceneManager _instance;
 
     public static GameSceneManager Instance => _instance;
@@ -18,6 +21,10 @@ public sealed class GameSceneManager : MonoBehaviour
     [Header("下一关")]
     [Tooltip("当前场景名末尾解析出关卡号 N 后，下一关场景名为 string.Format(本格式, N+1)。需与关卡 .unity 文件名一致，例如 Level {0}。")]
     [SerializeField] string nextLevelSceneNameFormat = "Level {0}";
+
+    [Header("存档 / 调试")]
+    [Tooltip("勾选后，游戏开局（本对象 Awake）时清除 PlayerPrefs 里的最高解锁关卡，恢复为默认仅第 1 关。发行版请取消勾选。")]
+    [SerializeField] bool resetMaxUnlockedLevelOnGameStart;
 
     [Header("相机背景颜色")]
     [SerializeField] bool applyMainCameraBackgroundColor = true;
@@ -33,11 +40,21 @@ public sealed class GameSceneManager : MonoBehaviour
 
         _instance = this;
         DontDestroyOnLoad(gameObject);
+
+        if (resetMaxUnlockedLevelOnGameStart)
+        {
+            PlayerPrefs.DeleteKey(MaxUnlockedLevelPrefsKey);
+            PlayerPrefs.Save();
+        }
     }
 
     void OnEnable()
     {
         UnitySceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+
+        var active = UnitySceneManagement.SceneManager.GetActiveScene();
+        if (active.IsValid() && TryParseTrailingLevelNumber(active.name, out var n))
+            RegisterReachedLevelNumber(n);
     }
 
     void OnDestroy()
@@ -47,11 +64,46 @@ public sealed class GameSceneManager : MonoBehaviour
             _instance = null;
     }
 
-    void OnSceneLoaded(UnitySceneManagement.Scene scene, UnitySceneManagement.LoadSceneMode mode)
+    void OnSceneLoaded(UnityScene scene, UnitySceneManagement.LoadSceneMode mode)
     {
+        if (TryParseTrailingLevelNumber(scene.name, out var levelNumber))
+            RegisterReachedLevelNumber(levelNumber);
+
         if (!isActiveAndEnabled)
             return;
         ApplyMainCameraBackground();
+    }
+
+    /// <summary> 已解锁的最高关卡号（持久化在 PlayerPrefs）：进入某关或<strong>过关</strong>时会取较大值写入。新存档默认为 1。 </summary>
+    public static int GetMaxUnlockedLevel() =>
+        PlayerPrefs.GetInt(MaxUnlockedLevelPrefsKey, 1);
+
+    /// <inheritdoc cref="GetMaxUnlockedLevel"/>
+    public int MaxUnlockedLevel => GetMaxUnlockedLevel();
+
+    /// <summary>
+    /// 当前关卡胜利时调用：把记录推进到「下一关」关卡号（当前场景名末尾数字 + 1），不必等加载下一关场景。
+    /// </summary>
+    public void RegisterUnlockedNextLevelAfterWin()
+    {
+        var active = UnitySceneManagement.SceneManager.GetActiveScene();
+        if (!active.IsValid())
+            return;
+
+        if (!TryParseTrailingLevelNumber(active.name, out var currentLevel))
+            return;
+
+        RegisterReachedLevelNumber(currentLevel + 1);
+    }
+
+    static void RegisterReachedLevelNumber(int levelNumber)
+    {
+        var prev = PlayerPrefs.GetInt(MaxUnlockedLevelPrefsKey, 1);
+        var next = Mathf.Max(prev, levelNumber);
+        if (next == prev)
+            return;
+        PlayerPrefs.SetInt(MaxUnlockedLevelPrefsKey, next);
+        PlayerPrefs.Save();
     }
 
     /// <summary>加载名为 <paramref name="sceneName"/> 的场景（单场景模式，会卸载当前场景）。</summary>
