@@ -504,7 +504,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1466350237
+--- !u!1 &1134267670
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -512,8 +512,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1466350239}
-  - component: {fileID: 1466350238}
+  - component: {fileID: 1134267672}
+  - component: {fileID: 1134267671}
   m_Layer: 0
   m_Name: TileAssetSettings
   m_TagString: Untagged
@@ -521,13 +521,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1466350238
+--- !u!114 &1134267671
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1466350237}
+  m_GameObject: {fileID: 1134267670}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 039c39751595a2f4d9da25a6f25a55e2, type: 3}
@@ -540,16 +540,17 @@ MonoBehaviour:
   floorTiles:
   - {fileID: 11400000, guid: e183dacf6a1c16d4da45a6c64623cf31, type: 2}
   - {fileID: 11400000, guid: b24c62bca23a7a6468106e382bc88d34, type: 2}
-  goalTile: {fileID: 11400000, guid: 5fef5d6fcd3e66745a27484d281faf3d, type: 2}
+  goalUncompletedTile: {fileID: 11400000, guid: 5fef5d6fcd3e66745a27484d281faf3d, type: 2}
+  goalCompletedTile: {fileID: 11400000, guid: 5a1b3720123192a4aa61189a722fff0f, type: 2}
   playerTile: {fileID: 11400000, guid: 38b3d984466ea2f45966ac71571c48c3, type: 2}
   boxTile: {fileID: 11400000, guid: a62a846c78f4c054a878b63239bbaa06, type: 2}
---- !u!4 &1466350239
+--- !u!4 &1134267672
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1466350237}
+  m_GameObject: {fileID: 1134267670}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 2.258633, y: -0.14268452, z: 0.044256702}
@@ -1127,5 +1128,5 @@ SceneRoots:
   - {fileID: 519420032}
   - {fileID: 603816598}
   - {fileID: 429732556}
-  - {fileID: 1466350239}
   - {fileID: 2002926178}
+  - {fileID: 1134267672}

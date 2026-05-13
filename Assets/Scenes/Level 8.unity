@@ -572,60 +572,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1466350237
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1466350239}
-  - component: {fileID: 1466350238}
-  m_Layer: 0
-  m_Name: TileAssetSettings
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1466350238
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1466350237}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 039c39751595a2f4d9da25a6f25a55e2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  wallBaseTiles:
-  - {fileID: 11400000, guid: 982781ff75439934295cdb942343bfac, type: 2}
-  - {fileID: 11400000, guid: de5dad6b581b41c49af13f461cb4adff, type: 2}
-  wallCapTile: {fileID: 11400000, guid: 3095ca6c3f055b342a5fd94cf156f7de, type: 2}
-  floorTiles:
-  - {fileID: 11400000, guid: e183dacf6a1c16d4da45a6c64623cf31, type: 2}
-  - {fileID: 11400000, guid: b24c62bca23a7a6468106e382bc88d34, type: 2}
-  goalTile: {fileID: 11400000, guid: 5fef5d6fcd3e66745a27484d281faf3d, type: 2}
-  playerTile: {fileID: 11400000, guid: 38b3d984466ea2f45966ac71571c48c3, type: 2}
-  boxTile: {fileID: 11400000, guid: a62a846c78f4c054a878b63239bbaa06, type: 2}
---- !u!4 &1466350239
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1466350237}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2.258633, y: -0.14268452, z: 0.044256702}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1927723767
 GameObject:
   m_ObjectHideFlags: 0
@@ -1190,6 +1136,61 @@ Tilemap:
     e31: 0
     e32: 0
     e33: 1
+--- !u!1 &2121729275
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2121729277}
+  - component: {fileID: 2121729276}
+  m_Layer: 0
+  m_Name: TileAssetSettings
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &2121729276
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2121729275}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 039c39751595a2f4d9da25a6f25a55e2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  wallBaseTiles:
+  - {fileID: 11400000, guid: 982781ff75439934295cdb942343bfac, type: 2}
+  - {fileID: 11400000, guid: de5dad6b581b41c49af13f461cb4adff, type: 2}
+  wallCapTile: {fileID: 11400000, guid: 3095ca6c3f055b342a5fd94cf156f7de, type: 2}
+  floorTiles:
+  - {fileID: 11400000, guid: e183dacf6a1c16d4da45a6c64623cf31, type: 2}
+  - {fileID: 11400000, guid: b24c62bca23a7a6468106e382bc88d34, type: 2}
+  goalUncompletedTile: {fileID: 11400000, guid: 5fef5d6fcd3e66745a27484d281faf3d, type: 2}
+  goalCompletedTile: {fileID: 11400000, guid: 5a1b3720123192a4aa61189a722fff0f, type: 2}
+  playerTile: {fileID: 11400000, guid: 38b3d984466ea2f45966ac71571c48c3, type: 2}
+  boxTile: {fileID: 11400000, guid: a62a846c78f4c054a878b63239bbaa06, type: 2}
+--- !u!4 &2121729277
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2121729275}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 2.258633, y: -0.14268452, z: 0.044256702}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -1197,5 +1198,5 @@ SceneRoots:
   - {fileID: 519420032}
   - {fileID: 603816598}
   - {fileID: 429732556}
-  - {fileID: 1466350239}
   - {fileID: 885814243}
+  - {fileID: 2121729277}
