@@ -1,16 +1,23 @@
+using System.Text.RegularExpressions;
 using UnityEngine;
 using SceneMgr = UnityEngine.SceneManagement.SceneManager;
 using LoadMode = UnityEngine.SceneManagement.LoadSceneMode;
 using UnitySceneManagement = UnityEngine.SceneManagement;
 
 /// <summary>
-/// 常驻场景管理：按名/下标加载、重开当前关、下一关（Build Settings 顺序），以及加载后主相机背景色。
+/// 常驻场景管理：按名加载、重开当前关、按场景名中的关卡号加载下一关，以及加载后主相机背景色。
 /// </summary>
 public sealed class GameSceneManager : MonoBehaviour
 {
     static GameSceneManager _instance;
 
     public static GameSceneManager Instance => _instance;
+
+    static readonly Regex s_TrailingLevelDigits = new(@"(\d+)\s*$", RegexOptions.Compiled);
+
+    [Header("下一关")]
+    [Tooltip("当前场景名末尾解析出关卡号 N 后，下一关场景名为 string.Format(本格式, N+1)。需与关卡 .unity 文件名一致，例如 Level {0}。")]
+    [SerializeField] string nextLevelSceneNameFormat = "Level {0}";
 
     [Header("相机背景颜色")]
     [SerializeField] bool applyMainCameraBackgroundColor = true;
@@ -74,18 +81,59 @@ public sealed class GameSceneManager : MonoBehaviour
         ApplyMainCameraBackground();
     }
 
-    /// <summary>加载 Build Settings 中的下一关（当前 buildIndex + 1）。</summary>
+    /// <summary>
+    /// 根据<strong>当前场景名末尾的数字</strong>（如 <c>Level 3</c> → 3）拼出 <c>Level 4</c> 并加载；
+    /// 与 Build Settings 中的顺序无关。场景名中无数字则放弃并打日志。
+    /// </summary>
     public void LoadNextScene()
     {
-        var nextIndex = UnitySceneManagement.SceneManager.GetActiveScene().buildIndex + 1;
-        if (nextIndex >= UnitySceneManagement.SceneManager.sceneCountInBuildSettings)
+        var active = UnitySceneManagement.SceneManager.GetActiveScene();
+        if (!active.IsValid())
         {
-            Debug.LogWarning("[GameSceneManager] 没有下一关：已是 Build Settings 里最后一个场景，或下标无效。", this);
+            Debug.LogWarning("[GameSceneManager] 当前场景无效，无法加载下一关。", this);
             return;
         }
 
-        SceneMgr.LoadScene(nextIndex, LoadMode.Single);
+        if (!TryParseTrailingLevelNumber(active.name, out var levelNumber))
+        {
+            Debug.LogWarning(
+                $"[GameSceneManager] 场景名「{active.name}」末尾没有可解析的关卡数字，无法按名加载下一关。",
+                this);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(nextLevelSceneNameFormat) || !nextLevelSceneNameFormat.Contains("{0}"))
+        {
+            Debug.LogWarning(
+                "[GameSceneManager] nextLevelSceneNameFormat 无效：需非空且包含占位符 {0}（关卡号）。",
+                this);
+            return;
+        }
+
+        var nextSceneName = string.Format(nextLevelSceneNameFormat.Trim(), levelNumber + 1);
+        if (!Application.CanStreamedLevelBeLoaded(nextSceneName))
+        {
+            Debug.LogWarning(
+                $"[GameSceneManager] 没有下一关或场景未加入 Build Settings：无法加载「{nextSceneName}」。",
+                this);
+            return;
+        }
+
+        SceneMgr.LoadScene(nextSceneName, LoadMode.Single);
         ApplyMainCameraBackground();
+    }
+
+    static bool TryParseTrailingLevelNumber(string sceneName, out int levelNumber)
+    {
+        levelNumber = 0;
+        if (string.IsNullOrEmpty(sceneName))
+            return false;
+
+        var m = s_TrailingLevelDigits.Match(sceneName.TrimEnd());
+        if (!m.Success || !int.TryParse(m.Groups[1].Value, out levelNumber))
+            return false;
+
+        return true;
     }
 
     void ApplyMainCameraBackground()

@@ -47,13 +47,22 @@ public sealed class TilemapSettings : MonoBehaviour
             return false;
         }
 
+        if (assets.GoalCompletedTile == null)
+        {
+            Debug.LogError(
+                "[Sokoban] TileAssetSettings 未指定「Goal Completed Tile」（画在背景层上、箱子占满目标时的瓦片）。",
+                assets);
+            _state = null;
+            return false;
+        }
+
         if (!SokobanRuntimeState.TryFromTilemaps(
                 groundTilemap,
                 objectsTilemap,
                 assets.WallBaseTiles,
                 assets.WallCapTile,
                 assets.FloorTiles,
-                assets.GoalTile,
+                assets.GoalUncompletedTile,
                 assets.PlayerTile,
                 assets.BoxTile,
                 out _state,
@@ -65,7 +74,7 @@ public sealed class TilemapSettings : MonoBehaviour
         }
 
         SokobanRuntimeState.ApplyWallBaseAndCap(groundTilemap, assets.WallBaseTiles, assets.WallCapTile);
-        SyncObjectsLayer(assets);
+        SyncTilemapsFromState(assets);
 
         if (centerCameraOnStart)
             ApplyCamera();
@@ -185,7 +194,7 @@ public sealed class TilemapSettings : MonoBehaviour
         if (!_state.TryMove(d))
             return;
 
-        SyncObjectsLayer(assets);
+        SyncTilemapsFromState(assets);
 
         if (_state.IsWin() && !_winCompleteUiShown)
         {
@@ -195,13 +204,24 @@ public sealed class TilemapSettings : MonoBehaviour
         }
     }
 
-    void SyncObjectsLayer(TileAssetSettings assets)
+    void SyncTilemapsFromState(TileAssetSettings assets)
     {
         var b = _state.Bounds;
         for (int y = b.yMin; y < b.yMax; y++)
         {
             for (int x = b.xMin; x < b.xMax; x++)
-                objectsTilemap.SetTile(new Vector3Int(x, y, 0), null);
+            {
+                var cell = new Vector3Int(x, y, 0);
+                objectsTilemap.SetTile(cell, null);
+
+                if (_state.IsGoal(cell))
+                {
+                    var completed = _state.HasBoxAt(cell);
+                    groundTilemap.SetTile(
+                        cell,
+                        completed ? assets.GoalCompletedTile : assets.GoalUncompletedTile);
+                }
+            }
         }
 
         foreach (var box in _state.Boxes)

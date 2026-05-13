@@ -39,6 +39,8 @@ public sealed class SokobanRuntimeState
 
     public bool IsGoal(Vector3Int c) => InBounds(c) && _goal[ToIndex(c)];
 
+    public bool HasBoxAt(Vector3Int c) => _boxes.Contains(c);
+
     /// <summary>Floor or goal (not wall).</summary>
     public bool IsWalkable(Vector3Int c) => InBounds(c) && !_wall[ToIndex(c)];
 
@@ -172,7 +174,7 @@ public sealed class SokobanRuntimeState
         TileBase[] wallBaseTiles,
         TileBase wallCapTile,
         TileBase[] floorTiles,
-        TileBase goalTile,
+        TileBase goalUncompletedTile,
         TileBase playerTile,
         TileBase boxTile,
         out SokobanRuntimeState state,
@@ -187,9 +189,9 @@ public sealed class SokobanRuntimeState
             return false;
         }
 
-        if (!wallCapTile || !goalTile || !playerTile || !boxTile)
+        if (!wallCapTile || !goalUncompletedTile || !playerTile || !boxTile)
         {
-            error = "请在 Inspector 指定：顶墙、目标、玩家、箱子，以及底墙列表、地板列表。";
+            error = "请在 Inspector 指定：顶墙、目标（未完成）、玩家、箱子，以及底墙列表、地板列表。";
             return false;
         }
 
@@ -238,7 +240,7 @@ public sealed class SokobanRuntimeState
                     SetWall(x, y, false);
                     SetGoal(x, y, false);
                 }
-                else if (gt == goalTile)
+                else if (gt == goalUncompletedTile)
                 {
                     SetWall(x, y, false);
                     SetGoal(x, y, true);
@@ -250,7 +252,7 @@ public sealed class SokobanRuntimeState
                 }
                 else
                 {
-                    error = $"Unknown ground tile at {cell}: {gt.name}. 地面只允许：底墙列表里任一种、顶墙、地板列表里任一种、目标，或留空（虚空当墙）。";
+                    error = $"Unknown ground tile at {cell}: {gt.name}. 地面只允许：底墙列表里任一种、顶墙、地板列表里任一种、目标（未完成），或留空（虚空当墙）。";
                     return false;
                 }
             }
@@ -285,8 +287,8 @@ public sealed class SokobanRuntimeState
                     error =
                         $"Objects 层在 {cell} 发现了未识别的 Tile「{ot.name}」。这一层只能放「玩家」和「箱子」。\n" +
                         "目标点、地板、墙都必须画在 Background（地面）层；目标格上有人或箱子时：Background 画目标，Objects 只叠玩家或箱子，不要把目标画在 Objects 上。";
-                    if (ot == goalTile)
-                        error += "\n（该 Tile 与 Inspector 里的 Goal 相同：你把目标画在了 Objects 层，请删改到 Background。）";
+                    if (ot == goalUncompletedTile)
+                        error += "\n（该 Tile 与 Inspector 里的 Goal Uncompleted 相同：你把目标画在了 Objects 层，请删改到 Background。）";
                     else if (TileInList(floorTiles, ot))
                         error += "\n（该 Tile 在地板列表里：应只在 Background 使用。）";
                     else if (TileInList(wallBaseTiles, ot) || ot == wallCapTile)
