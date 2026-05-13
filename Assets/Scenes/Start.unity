@@ -1791,6 +1791,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 416d300a122df0541a7b26a784acf15b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  applyMainCameraBackgroundColor: 1
+  cameraBackgroundColor: {r: 0.4745098, g: 0.47323784, b: 0.19215688, a: 0}
 --- !u!4 &842471143
 Transform:
   m_ObjectHideFlags: 0
