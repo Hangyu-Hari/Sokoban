@@ -7,7 +7,7 @@ using UnityEngine.Tilemaps;
 using UnityEngine.UI;
 
 /// <summary>
-/// Runtime：编辑模式（F1）下，工具为「光标 / 绘制 / 橡皮」三选一（默认光标）；光标模式下按住鼠标拖曳平移相机（可限制在编辑网格内）；绘制或橡皮时左键改 Tilemap。
+/// Runtime：编辑模式（F1）下，工具为「光标 / 绘制 / 橡皮」三选一（默认光标）；光标模式下拖曳平移相机；Ctrl+滚轮缩放正交视野；可限制在编辑网格内；绘制或橡皮时左键改 Tilemap。
 /// 编辑网格从格坐标 (0,0,0) 起，仅配置宽高格数；开局将相机对准该网格世界中心（见 <see cref="centerCameraOnEditGridAtStart"/>）。
 /// </summary>
 [DisallowMultipleComponent]
@@ -81,6 +81,16 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     [Tooltip("编辑模式（F1）下将相机限制在「网格」世界范围内，避免看到编辑网格外的空白。")]
     [SerializeField] bool clampCameraToEditGridBounds = true;
 
+    [Header("编辑模式 · Ctrl 滚轮缩放")]
+    [Tooltip("F1 编辑模式下按住 Ctrl 并滚动滚轮，调整正交相机 Orthographic Size。")]
+    [SerializeField] bool editModeCtrlScrollZoomEnabled = true;
+    [Tooltip("相对开局时记录的 Orthographic Size：最小倍率（正交 Size 的下限 = 参考 × 本值）。数值越小允许放得越大（例如 0.2）。")]
+    [SerializeField, Min(0.05f)] float orthographicZoomMinMultiplier = 0.25f;
+    [Tooltip("相对开局时记录的 Orthographic Size：最大倍率（正交 Size 的上限 = 参考 × 本值）。数值越大允许缩得越远（例如 4）。")]
+    [SerializeField, Min(0.05f)] float orthographicZoomMaxMultiplier = 4f;
+    [Tooltip("滚轮一步改变 Size 的力度（配合 Input.GetAxis(\"Mouse ScrollWheel\")）。")]
+    [SerializeField, Min(0.01f)] float orthographicZoomScrollSensitivity = 1.25f;
+
     [Header("工具模式按钮（拖引用即可；运行时绑定 onClick，选中项略灰）")]
     [SerializeField] Button cursorToolButton;
     [SerializeField] Button drawToolButton;
@@ -129,6 +139,7 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
 
     bool _cursorPanDragging;
     Vector3 _cursorPanLastScreen;
+    float _orthographicZoomReferenceSize;
 
     /// <summary> 编辑用固定网格：最小角 <c>(0,0,0)</c>，宽高见 <see cref="fixedEditGridCellCount"/>。 </summary>
     BoundsInt FixedEditGridCellBounds
@@ -145,6 +156,10 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     {
         fixedEditGridCellCount.x = Mathf.Max(1, fixedEditGridCellCount.x);
         fixedEditGridCellCount.y = Mathf.Max(1, fixedEditGridCellCount.y);
+
+        if (orthographicZoomMinMultiplier > orthographicZoomMaxMultiplier)
+            (orthographicZoomMinMultiplier, orthographicZoomMaxMultiplier) =
+                (orthographicZoomMaxMultiplier, orthographicZoomMinMultiplier);
     }
 
     void Awake()
@@ -162,23 +177,24 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
 
     void Start()
     {
-        if (!centerCameraOnEditGridAtStart)
-            return;
-
         var cam = worldCamera != null ? worldCamera : Camera.main;
-        if (cam == null || groundTilemap == null)
-            return;
 
-        if (!TryGetFixedEditGridPlaneMinMax(out var minX, out var maxX, out var minY, out var maxY))
-            return;
+        if (centerCameraOnEditGridAtStart && cam != null && groundTilemap != null)
+        {
+            if (TryGetFixedEditGridPlaneMinMax(out var minX, out var maxX, out var minY, out var maxY))
+            {
+                var cx = (minX + maxX) * 0.5f;
+                var cy = (minY + maxY) * 0.5f;
+                var p = cam.transform.position;
+                cam.transform.position = new Vector3(cx, cy, p.z);
 
-        var cx = (minX + maxX) * 0.5f;
-        var cy = (minY + maxY) * 0.5f;
-        var p = cam.transform.position;
-        cam.transform.position = new Vector3(cx, cy, p.z);
+                if (clampCameraToEditGridBounds && cam.orthographic)
+                    ClampCameraToFixedEditGrid(cam);
+            }
+        }
 
-        if (clampCameraToEditGridBounds && cam.orthographic)
-            ClampCameraToFixedEditGrid(cam);
+        if (cam != null && cam.orthographic)
+            _orthographicZoomReferenceSize = Mathf.Max(1e-4f, cam.orthographicSize);
     }
 
     void WireToolModeButtons()
@@ -398,6 +414,7 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
         }
 
         UpdateCursorDragPanCamera();
+        UpdateEditModeCtrlOrthographicZoom();
 
         if (!IsEditMode)
             return;
@@ -422,6 +439,40 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
             return;
 
         ApplyBrushAtCell(cell);
+    }
+
+    void UpdateEditModeCtrlOrthographicZoom()
+    {
+        if (!IsEditMode || !editModeCtrlScrollZoomEnabled)
+            return;
+
+        if (!(Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)))
+            return;
+
+        var cam = worldCamera != null ? worldCamera : Camera.main;
+        if (cam == null || !cam.orthographic)
+            return;
+
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+            return;
+
+        var wheel = Input.GetAxis("Mouse ScrollWheel");
+        if (Mathf.Abs(wheel) < 1e-5f)
+            return;
+
+        if (_orthographicZoomReferenceSize < 1e-4f)
+            _orthographicZoomReferenceSize = Mathf.Max(1e-4f, cam.orthographicSize);
+
+        // 滚轮向前（>0）为放大画面 → 减小 Orthographic Size
+        cam.orthographicSize -= wheel * orthographicZoomScrollSensitivity;
+
+        var refS = _orthographicZoomReferenceSize;
+        var lo = refS * orthographicZoomMinMultiplier;
+        var hi = refS * orthographicZoomMaxMultiplier;
+        cam.orthographicSize = Mathf.Clamp(cam.orthographicSize, Mathf.Min(lo, hi), Mathf.Max(lo, hi));
+
+        if (clampCameraToEditGridBounds && groundTilemap != null)
+            ClampCameraToFixedEditGrid(cam);
     }
 
     void UpdateCursorDragPanCamera()
