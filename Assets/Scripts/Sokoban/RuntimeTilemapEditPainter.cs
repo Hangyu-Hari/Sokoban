@@ -6,7 +6,7 @@ using UnityEngine.Serialization;
 using UnityEngine.Tilemaps;
 
 /// <summary>
-/// Runtime：调色板选中后，在编辑模式下用鼠标在 Tilemap 上落笔（左键按住可连续画）。
+/// Runtime：编辑模式（F1）下，「绘制」或「橡皮」二选一（互斥）时左键改 Tilemap。
 /// 网格范围由 Inspector 固定，不随已铺瓦片变化。
 /// </summary>
 [DisallowMultipleComponent]
@@ -45,6 +45,34 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     [Range(0.05f, 1f)]
     [SerializeField] float brushPreviewAlpha = 0.45f;
     [SerializeField] int brushPreviewSortingOffset = 40;
+
+    [Header("绘制 / 橡皮")]
+    [Tooltip("为 true 时用当前调色板笔刷绘制（与橡皮互斥；开启时会关掉橡皮）。")]
+    [SerializeField] bool drawModeEnabled;
+    [Tooltip("为 true 时按调色板当前分类擦除（与绘制互斥；开启时会关掉绘制）。")]
+    [SerializeField] bool eraserModeEnabled;
+
+    /// <summary> 是否允许在地图上落笔（可由 UI「绘制」按钮切换）。 </summary>
+    public bool DrawModeEnabled => drawModeEnabled;
+
+    /// <summary> 是否为全局橡皮模式（可由 UI「橡皮」按钮切换）。 </summary>
+    public bool EraserModeEnabled => eraserModeEnabled;
+
+    /// <summary> 供 UI「绘制」按钮：开启落笔并自动关闭橡皮。 </summary>
+    public void SetDrawModeEnabled(bool enabled)
+    {
+        drawModeEnabled = enabled;
+        if (enabled)
+            eraserModeEnabled = false;
+    }
+
+    /// <summary> 供 UI「橡皮」按钮：开启橡皮并自动关闭绘制。 </summary>
+    public void SetEraserModeEnabled(bool enabled)
+    {
+        eraserModeEnabled = enabled;
+        if (enabled)
+            drawModeEnabled = false;
+    }
 
     Mesh _gridMesh;
     MeshFilter _gridMeshFilter;
@@ -253,6 +281,9 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
         if (palette == null || groundTilemap == null || objectsTilemap == null)
             return;
 
+        if (!drawModeEnabled && !eraserModeEnabled)
+            return;
+
         if (!Input.GetMouseButton(0))
             return;
 
@@ -285,8 +316,16 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
 
     void ApplyBrushAtCell(Vector3Int cell)
     {
-        var brush = palette.CurrentBrush;
+        if ((!drawModeEnabled && !eraserModeEnabled) || palette == null)
+            return;
+
         var assets = TileAssetSettings.Instance;
+
+        TilePaletteBrush brush;
+        if (eraserModeEnabled)
+            brush = new TilePaletteBrush(palette.DisplayedLayer, null, true);
+        else
+            brush = palette.CurrentBrush;
 
         if (brush.Layer == TilePaletteLayer.Ground)
         {
@@ -349,6 +388,12 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
             return;
 
         if (!showBrushTilePreview || !IsEditMode || palette == null || groundTilemap == null)
+        {
+            SetBrushPreviewVisible(false);
+            return;
+        }
+
+        if (eraserModeEnabled)
         {
             SetBrushPreviewVisible(false);
             return;

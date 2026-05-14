@@ -35,6 +35,7 @@ public readonly struct TilePaletteBrush : IEquatable<TilePaletteBrush>
 
 /// <summary>
 /// 从 <see cref="TileAssetSettings"/> 在运行时生成 ScrollView Content 下的 TileUI，并维护 <see cref="CurrentBrush"/>。
+/// 可按「背景 / 物体」切换 Content 中展示的笔刷列表（<see cref="ShowGroundPalette"/> / <see cref="ShowObjectsPalette"/>）。
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class TilePaletteController : MonoBehaviour
@@ -52,8 +53,15 @@ public sealed class TilePaletteController : MonoBehaviour
     [Header("生成时机")]
     [SerializeField] bool buildPaletteInStart = true;
 
+    [Tooltip("首次生成时默认展示背景层还是物体层笔刷。")]
+    [SerializeField] TilePaletteLayer defaultPaletteLayer = TilePaletteLayer.Ground;
+
+    TilePaletteLayer _displayedLayer = TilePaletteLayer.Ground;
     TilePaletteBrush _currentBrush;
     readonly List<TilePaletteBrush> _builtBrushes = new();
+
+    /// <summary> 当前 Scroll 里展示的是哪一类（背景 / 物体）。 </summary>
+    public TilePaletteLayer DisplayedLayer => _displayedLayer;
 
     /// <summary> 当前选中的笔刷；落笔脚本读取此值。 </summary>
     public TilePaletteBrush CurrentBrush => _currentBrush;
@@ -63,12 +71,29 @@ public sealed class TilePaletteController : MonoBehaviour
 
     void Start()
     {
+        _displayedLayer = defaultPaletteLayer;
         if (buildPaletteInStart)
-            BuildPalette();
+            RebuildPalette();
     }
 
-    /// <summary> 清空 Content 并按 TileAssetSettings 重新生成条目。 </summary>
-    public void BuildPalette()
+    /// <summary> 供 UI「背景」按钮：Content 只显示 Ground 层笔刷（默认）。 </summary>
+    public void ShowGroundPalette()
+    {
+        _displayedLayer = TilePaletteLayer.Ground;
+        RebuildPalette();
+    }
+
+    /// <summary> 供 UI「物体」按钮：Content 只显示 Objects 层笔刷。 </summary>
+    public void ShowObjectsPalette()
+    {
+        _displayedLayer = TilePaletteLayer.Objects;
+        RebuildPalette();
+    }
+
+    /// <summary> 按当前 <see cref="_displayedLayer"/> 重新生成 Content（与按钮切换后调用）。 </summary>
+    public void BuildPalette() => RebuildPalette();
+
+    void RebuildPalette()
     {
         if (content == null)
         {
@@ -94,6 +119,17 @@ public sealed class TilePaletteController : MonoBehaviour
 
         _builtBrushes.Clear();
 
+        if (_displayedLayer == TilePaletteLayer.Ground)
+            AddGroundPaletteEntries(assets);
+        else
+            AddObjectsPaletteEntries(assets);
+
+        if (_builtBrushes.Count > 0)
+            SetCurrentBrush(_builtBrushes[0]);
+    }
+
+    void AddGroundPaletteEntries(TileAssetSettings assets)
+    {
         var wallIndex = 0;
         foreach (var t in assets.WallBaseTiles)
         {
@@ -122,18 +158,15 @@ public sealed class TilePaletteController : MonoBehaviour
 
         if (assets.GoalCompletedTile != null)
             AddPaletteRow(new TilePaletteBrush(TilePaletteLayer.Ground, assets.GoalCompletedTile, false), "目标（完成）");
+    }
 
+    void AddObjectsPaletteEntries(TileAssetSettings assets)
+    {
         if (assets.PlayerTile != null)
             AddPaletteRow(new TilePaletteBrush(TilePaletteLayer.Objects, assets.PlayerTile, false), "玩家");
 
         if (assets.BoxTile != null)
             AddPaletteRow(new TilePaletteBrush(TilePaletteLayer.Objects, assets.BoxTile, false), "箱子");
-
-        AddPaletteRow(new TilePaletteBrush(TilePaletteLayer.Ground, null, true), "擦除 · 背景");
-        AddPaletteRow(new TilePaletteBrush(TilePaletteLayer.Objects, null, true), "擦除 · 物体");
-
-        if (_builtBrushes.Count > 0)
-            SetCurrentBrush(_builtBrushes[0]);
     }
 
     void AddPaletteRow(TilePaletteBrush brush, string displayName)
