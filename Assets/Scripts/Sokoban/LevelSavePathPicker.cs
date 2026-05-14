@@ -5,8 +5,8 @@ using System.Text;
 using UnityEngine;
 
 /// <summary>
-/// 关卡保存路径：优先弹出系统保存对话框，默认目录为 <c>Assets/LevelFiles</c>。
-/// 编辑器内使用 <c>EditorUtility.SaveFilePanel</c>；Windows 独立构建使用 <c>comdlg32</c>。
+/// 关卡 JSON 的保存 / 打开对话框，默认目录为 <c>Assets/LevelFiles</c>。
+/// 编辑器内使用 <c>EditorUtility</c>；Windows 独立构建使用 <c>comdlg32</c>。
 /// </summary>
 public static class LevelSavePathPicker
 {
@@ -61,6 +61,40 @@ public static class LevelSavePathPicker
 #endif
     }
 
+    /// <summary>
+    /// 弹出打开文件对话框；默认打开 <see cref="GetDefaultLevelFilesDirectory"/>；用户取消则返回 false。
+    /// </summary>
+    public static bool TryPickOpenJsonPath(out string fullPath)
+    {
+        fullPath = null;
+        var dir = GetDefaultLevelFilesDirectory();
+        try
+        {
+            if (!Directory.Exists(dir))
+                Directory.CreateDirectory(dir);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning("[Sokoban] 无法创建 LevelFiles 目录：" + ex.Message);
+        }
+
+#if UNITY_EDITOR
+        fullPath = UnityEditor.EditorUtility.OpenFilePanel(
+            "打开关卡",
+            dir,
+            "json");
+        return !string.IsNullOrEmpty(fullPath);
+#elif UNITY_STANDALONE_WIN
+        if (TryWindowsOpenDialog(dir, out fullPath))
+            return true;
+        Debug.LogWarning("[Sokoban] 系统打开对话框不可用，已取消。");
+        return false;
+#else
+        Debug.LogWarning("[Sokoban] 当前平台未集成打开对话框，请在 Unity 编辑器内打开，或扩展 LevelSavePathPicker。");
+        return false;
+#endif
+    }
+
 #if UNITY_STANDALONE_WIN && !UNITY_EDITOR
     const int OFN_PATHMUSTEXIST = 0x800;
     const int OFN_OVERWRITEPROMPT = 0x2;
@@ -71,6 +105,9 @@ public static class LevelSavePathPicker
 
     [DllImport("comdlg32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     static extern bool GetSaveFileNameW(ref OpenFileNameW ofn);
+
+    [DllImport("comdlg32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    static extern bool GetOpenFileNameW(ref OpenFileNameW ofn);
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     struct OpenFileNameW
@@ -132,6 +169,43 @@ public static class LevelSavePathPicker
             };
 
             if (!GetSaveFileNameW(ref ofn))
+                return false;
+
+            fullPath = Marshal.PtrToStringUni(fileBuffer);
+            return !string.IsNullOrEmpty(fullPath);
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(fileBuffer);
+        }
+    }
+
+    const int OFN_FILEMUSTEXIST = 0x1000;
+
+    static bool TryWindowsOpenDialog(string initialDir, out string fullPath)
+    {
+        fullPath = null;
+        const int maxChars = 32768;
+        var fileBuffer = Marshal.AllocHGlobal(maxChars * 2);
+        try
+        {
+            for (var i = 0; i < maxChars * 2; i++)
+                Marshal.WriteByte(fileBuffer, i, 0);
+
+            var ofn = new OpenFileNameW
+            {
+                lStructSize = Marshal.SizeOf(typeof(OpenFileNameW)),
+                hwndOwner = IntPtr.Zero,
+                lpstrFilter = "JSON 关卡\0*.json\0所有文件\0*.*\0\0",
+                lpstrFile = fileBuffer,
+                nMaxFile = maxChars,
+                lpstrInitialDir = string.IsNullOrEmpty(initialDir) ? null : initialDir,
+                lpstrTitle = "打开关卡",
+                lpstrDefExt = "json",
+                Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR | OFN_EXPLORER | OFN_HIDEREADONLY | OFN_ENABLESIZING,
+            };
+
+            if (!GetOpenFileNameW(ref ofn))
                 return false;
 
             fullPath = Marshal.PtrToStringUni(fileBuffer);

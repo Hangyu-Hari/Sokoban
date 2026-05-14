@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.Tilemaps;
 
 /// <summary>
-/// 将编辑网格内两层 Tilemap 存为 JSON（仅保存；读取后续再做）。
+/// 将编辑网格内两层 Tilemap 存为 JSON / 从 JSON 读回并写入 Tilemap。
 /// 仅写入「至少有一层有瓦片」的格子；空格子不写入。
 /// 瓦片用 <see cref="TileAssetSettings"/> 中的稳定字符串键标识。
 /// </summary>
@@ -131,6 +131,237 @@ public static class SokobanLevelSaveFile
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// 读取 JSON 关卡：先清空 <paramref name="clearAndPlaceWithin"/> 内两层 Tilemap，再把文件中落在该范围内的格子写回。
+    /// </summary>
+    public static bool TryLoad(
+        string fullPath,
+        Tilemap ground,
+        Tilemap objects,
+        BoundsInt clearAndPlaceWithin,
+        TileAssetSettings assets,
+        out string error)
+    {
+        error = null;
+        if (string.IsNullOrEmpty(fullPath) || !File.Exists(fullPath))
+        {
+            error = "文件不存在或路径为空。";
+            return false;
+        }
+
+        if (ground == null || objects == null)
+        {
+            error = "Tilemap 引用为空。";
+            return false;
+        }
+
+        if (assets == null)
+        {
+            error = "未找到 TileAssetSettings。";
+            return false;
+        }
+
+        string json;
+        try
+        {
+            json = File.ReadAllText(fullPath);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            return false;
+        }
+
+        SokobanLevelSaveData data;
+        try
+        {
+            data = JsonUtility.FromJson<SokobanLevelSaveData>(json);
+        }
+        catch (Exception ex)
+        {
+            error = "JSON 解析失败：" + ex.Message;
+            return false;
+        }
+
+        if (data == null)
+        {
+            error = "关卡数据为空。";
+            return false;
+        }
+
+        if (data.formatVersion != 2)
+        {
+            error = "不支持的 formatVersion：" + data.formatVersion + "（需要 2），或 JSON 无效。";
+            return false;
+        }
+
+        if (data.boundsSizeX <= 0 || data.boundsSizeY <= 0)
+        {
+            error = "文件中网格宽高无效。";
+            return false;
+        }
+
+        var cells = data.filledCells;
+        var staged = new List<(Vector3Int cell, TileBase g, TileBase o)>();
+        if (cells != null)
+        {
+            for (var i = 0; i < cells.Length; i++)
+            {
+                var entry = cells[i];
+                var absX = data.boundsXMin + entry.x;
+                var absY = data.boundsYMin + entry.y;
+                var cell = new Vector3Int(absX, absY, clearAndPlaceWithin.zMin);
+                if (!clearAndPlaceWithin.Contains(cell))
+                    continue;
+
+                if (!TryParseTileKey(entry.groundKey, assets, out var gTile, out var ge))
+                {
+                    error = ge;
+                    return false;
+                }
+
+                if (!TryParseTileKey(entry.objectKey, assets, out var oTile, out var oe))
+                {
+                    error = oe;
+                    return false;
+                }
+
+                staged.Add((cell, gTile, oTile));
+            }
+        }
+
+        var zClear = clearAndPlaceWithin.zMin;
+        for (var y = clearAndPlaceWithin.yMin; y < clearAndPlaceWithin.yMax; y++)
+        {
+            for (var x = clearAndPlaceWithin.xMin; x < clearAndPlaceWithin.xMax; x++)
+            {
+                var c = new Vector3Int(x, y, zClear);
+                ground.SetTile(c, null);
+                objects.SetTile(c, null);
+            }
+        }
+
+        for (var i = 0; i < staged.Count; i++)
+        {
+            var s = staged[i];
+            ground.SetTile(s.cell, s.g);
+            objects.SetTile(s.cell, s.o);
+        }
+
+        return true;
+    }
+
+    static bool TryParseTileKey(string key, TileAssetSettings assets, out TileBase tile, out string error)
+    {
+        tile = null;
+        error = null;
+        if (string.IsNullOrEmpty(key))
+            return true;
+
+        if (key == "wallCap")
+        {
+            tile = assets.WallCapTile;
+            if (tile == null)
+            {
+                error = "键 wallCap 对应瓦片未配置。";
+                return false;
+            }
+
+            return true;
+        }
+
+        if (key == "goalUncompleted")
+        {
+            tile = assets.GoalUncompletedTile;
+            if (tile == null)
+            {
+                error = "键 goalUncompleted 对应瓦片未配置。";
+                return false;
+            }
+
+            return true;
+        }
+
+        if (key == "goalCompleted")
+        {
+            tile = assets.GoalCompletedTile;
+            if (tile == null)
+            {
+                error = "键 goalCompleted 对应瓦片未配置。";
+                return false;
+            }
+
+            return true;
+        }
+
+        if (key == "player")
+        {
+            tile = assets.PlayerTile;
+            if (tile == null)
+            {
+                error = "键 player 对应瓦片未配置。";
+                return false;
+            }
+
+            return true;
+        }
+
+        if (key == "box")
+        {
+            tile = assets.BoxTile;
+            if (tile == null)
+            {
+                error = "键 box 对应瓦片未配置。";
+                return false;
+            }
+
+            return true;
+        }
+
+        const string wallPrefix = "wallBase:";
+        if (key.StartsWith(wallPrefix, StringComparison.Ordinal))
+        {
+            if (!int.TryParse(key.Substring(wallPrefix.Length), out var idx))
+            {
+                error = "无效的 wallBase 键：" + key;
+                return false;
+            }
+
+            var arr = assets.WallBaseTiles;
+            if (arr == null || idx < 0 || idx >= arr.Length || arr[idx] == null)
+            {
+                error = "wallBase 索引越界或未配置：" + key;
+                return false;
+            }
+
+            tile = arr[idx];
+            return true;
+        }
+
+        const string floorPrefix = "floor:";
+        if (key.StartsWith(floorPrefix, StringComparison.Ordinal))
+        {
+            if (!int.TryParse(key.Substring(floorPrefix.Length), out var idx))
+            {
+                error = "无效的 floor 键：" + key;
+                return false;
+            }
+
+            var arr = assets.FloorTiles;
+            if (arr == null || idx < 0 || idx >= arr.Length || arr[idx] == null)
+            {
+                error = "floor 索引越界或未配置：" + key;
+                return false;
+            }
+
+            tile = arr[idx];
+            return true;
+        }
+
+        error = "未知的瓦片键：" + key;
+        return false;
     }
 
     static bool TryGetTileKey(TileBase tile, TileAssetSettings assets, out string key, out string error)

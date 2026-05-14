@@ -7,7 +7,7 @@ using UnityEngine.Tilemaps;
 using UnityEngine.UI;
 
 /// <summary>
-/// Runtime：编辑模式（F1）下，工具为「光标 / 绘制 / 橡皮」三选一；Ctrl+S 保存关卡 JSON；光标拖曳平移；Ctrl+滚轮缩放；可限制在编辑网格内；绘制或橡皮时左键改 Tilemap。
+/// Runtime：编辑模式（F1）下，工具为「光标 / 绘制 / 橡皮」三选一；Ctrl+S 保存关卡 JSON；<see cref="OpenLevelFromFileDialog"/> 供 UI 打开 JSON；光标拖曳平移；Ctrl+滚轮缩放；可限制在编辑网格内；绘制或橡皮时左键改 Tilemap。
 /// 编辑网格从格坐标 (0,0,0) 起，仅配置宽高格数；开局将相机对准该网格世界中心（见 <see cref="centerCameraOnEditGridAtStart"/>）。
 /// </summary>
 [DisallowMultipleComponent]
@@ -476,6 +476,42 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
         }
 
         Debug.Log("[Sokoban] Ctrl+S 已保存关卡到 " + path, this);
+    }
+
+    /// <summary> 供 UI「打开关卡」按钮：从 JSON 读入当前编辑网格；需已在编辑模式（F1）。 </summary>
+    public void OpenLevelFromFileDialog()
+    {
+        if (!IsEditMode)
+        {
+            Debug.LogWarning("[Sokoban] 请先按 F1 进入编辑模式后再打开关卡。", this);
+            return;
+        }
+
+        var assets = TileAssetSettings.Instance;
+        if (assets == null || groundTilemap == null || objectsTilemap == null)
+        {
+            Debug.LogWarning("[Sokoban] 打开失败：缺少 Tilemap 或 TileAssetSettings。", this);
+            return;
+        }
+
+        if (!LevelSavePathPicker.TryPickOpenJsonPath(out var path))
+            return;
+
+        if (!SokobanLevelSaveFile.TryLoad(
+                path,
+                groundTilemap,
+                objectsTilemap,
+                FixedEditGridCellBounds,
+                assets,
+                out var err))
+        {
+            Debug.LogWarning("[Sokoban] 打开关卡失败：" + err, this);
+            return;
+        }
+
+        tilemapSettings?.RefreshFromTilemaps();
+        _lastGridBounds = default;
+        Debug.Log("[Sokoban] 已打开关卡：" + path, this);
     }
 
     void UpdateEditModeCtrlOrthographicZoom()

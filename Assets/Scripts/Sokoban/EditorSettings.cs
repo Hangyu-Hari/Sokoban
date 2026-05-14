@@ -23,6 +23,10 @@ public sealed class EditorSettings : MonoBehaviour
     [FormerlySerializedAs("toggleLabelTmp")]
     [SerializeField] TextMeshProUGUI toggleButtonLabelTmp;
 
+    [Tooltip("打开关卡 JSON（默认从 Assets/LevelFiles 选文件）；需 F1 编辑模式。")]
+    [SerializeField] Button openLevelButton;
+    [SerializeField] RuntimeTilemapEditPainter tilemapEditPainter;
+
     [Header("面板 anchoredPosition.x")]
     [SerializeField] float showX;
     [SerializeField] float hideX;
@@ -42,6 +46,8 @@ public sealed class EditorSettings : MonoBehaviour
         EnsureToggleButtonLabelTmp();
         if (togglePanelButton != null)
             togglePanelButton.onClick.AddListener(OnTogglePanelClicked);
+        if (openLevelButton != null && tilemapEditPainter != null)
+            openLevelButton.onClick.AddListener(tilemapEditPainter.OpenLevelFromFileDialog);
     }
 
     void Start()
@@ -61,6 +67,8 @@ public sealed class EditorSettings : MonoBehaviour
     {
         if (togglePanelButton != null)
             togglePanelButton.onClick.RemoveListener(OnTogglePanelClicked);
+        if (openLevelButton != null && tilemapEditPainter != null)
+            openLevelButton.onClick.RemoveListener(tilemapEditPainter.OpenLevelFromFileDialog);
     }
 
     void OnTogglePanelClicked()
