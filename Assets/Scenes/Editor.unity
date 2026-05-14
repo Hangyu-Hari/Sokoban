@@ -1142,7 +1142,6 @@ MonoBehaviour:
   orthographicZoomMinMultiplier: 0.25
   orthographicZoomMaxMultiplier: 4
   orthographicZoomScrollSensitivity: 1.25
-  editModeSaveFileName: edited_level.json
   cursorToolButton: {fileID: 1215006524}
   drawToolButton: {fileID: 1648894340}
   eraserToolButton: {fileID: 5664001}

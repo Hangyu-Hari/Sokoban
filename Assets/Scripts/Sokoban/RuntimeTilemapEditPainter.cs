@@ -7,7 +7,7 @@ using UnityEngine.Tilemaps;
 using UnityEngine.UI;
 
 /// <summary>
-/// Runtime：编辑模式（F1）下，工具为「光标 / 绘制 / 橡皮」三选一（默认光标）；光标模式下拖曳平移相机；Ctrl+滚轮缩放正交视野；可限制在编辑网格内；绘制或橡皮时左键改 Tilemap。
+/// Runtime：编辑模式（F1）下，工具为「光标 / 绘制 / 橡皮」三选一；Ctrl+S 保存关卡 JSON；光标拖曳平移；Ctrl+滚轮缩放；可限制在编辑网格内；绘制或橡皮时左键改 Tilemap。
 /// 编辑网格从格坐标 (0,0,0) 起，仅配置宽高格数；开局将相机对准该网格世界中心（见 <see cref="centerCameraOnEditGridAtStart"/>）。
 /// </summary>
 [DisallowMultipleComponent]
@@ -403,13 +403,18 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
         if (Input.GetKeyDown(toggleEditModeKey))
             IsEditMode = !IsEditMode;
 
+        if (IsEditMode)
+            TrySaveEditLevelIfHotkey();
+
         if (toolHotkeysEnabled && IsEditMode)
         {
             if (Input.GetKeyDown(KeyCode.E))
                 SetEraserMode();
             if (Input.GetKeyDown(KeyCode.B))
                 SetDrawMode();
-            if (Input.GetKeyDown(KeyCode.S))
+            if (Input.GetKeyDown(KeyCode.S)
+                && !Input.GetKey(KeyCode.LeftControl)
+                && !Input.GetKey(KeyCode.RightControl))
                 SetCursorMode();
         }
 
@@ -439,6 +444,38 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
             return;
 
         ApplyBrushAtCell(cell);
+    }
+
+    void TrySaveEditLevelIfHotkey()
+    {
+        if (!(Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)))
+            return;
+        if (!Input.GetKeyDown(KeyCode.S))
+            return;
+
+        var assets = TileAssetSettings.Instance;
+        if (assets == null || groundTilemap == null || objectsTilemap == null)
+        {
+            Debug.LogWarning("[Sokoban] Ctrl+S 保存失败：缺少 Tilemap 或 TileAssetSettings。", this);
+            return;
+        }
+
+        if (!LevelSavePathPicker.TryPickSaveJsonPath(out var path))
+            return;
+
+        if (!SokobanLevelSaveFile.TrySave(
+                groundTilemap,
+                objectsTilemap,
+                FixedEditGridCellBounds,
+                assets,
+                path,
+                out var err))
+        {
+            Debug.LogWarning("[Sokoban] Ctrl+S 保存失败：" + err, this);
+            return;
+        }
+
+        Debug.Log("[Sokoban] Ctrl+S 已保存关卡到 " + path, this);
     }
 
     void UpdateEditModeCtrlOrthographicZoom()

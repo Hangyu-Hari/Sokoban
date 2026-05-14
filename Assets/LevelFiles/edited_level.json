@@ -1,0 +1,41 @@
+{
+    "formatVersion": 2,
+    "boundsXMin": 0,
+    "boundsYMin": 0,
+    "boundsZMin": 0,
+    "boundsSizeX": 200,
+    "boundsSizeY": 200,
+    "boundsSizeZ": 1,
+    "filledCells": [
+        {
+            "x": 97,
+            "y": 100,
+            "groundKey": "wallBase:0",
+            "objectKey": ""
+        },
+        {
+            "x": 98,
+            "y": 100,
+            "groundKey": "wallBase:0",
+            "objectKey": ""
+        },
+        {
+            "x": 99,
+            "y": 100,
+            "groundKey": "wallBase:0",
+            "objectKey": ""
+        },
+        {
+            "x": 100,
+            "y": 100,
+            "groundKey": "wallBase:0",
+            "objectKey": ""
+        },
+        {
+            "x": 101,
+            "y": 100,
+            "groundKey": "wallBase:0",
+            "objectKey": ""
+        }
+    ]
+}
