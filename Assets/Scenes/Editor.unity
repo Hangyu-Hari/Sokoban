@@ -1555,6 +1555,9 @@ MonoBehaviour:
   cursorToolButton: {fileID: 1215006524}
   drawToolButton: {fileID: 1648894340}
   eraserToolButton: {fileID: 5664001}
+  levelDocumentTitleLabels:
+  - {fileID: 1961682115}
+  - {fileID: 1467773384}
 --- !u!1 &414732587
 GameObject:
   m_ObjectHideFlags: 0
@@ -5608,7 +5611,7 @@ GameObject:
   - component: {fileID: 1467773385}
   - component: {fileID: 1467773384}
   m_Layer: 5
-  m_Name: "\u540D\u79F0 (1)"
+  m_Name: "\u6587\u4EF6\u540D"
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -6282,6 +6285,8 @@ MonoBehaviour:
   panelContent: {fileID: 662861597}
   toggleButtonLabelTmp: {fileID: 1609413905}
   openLevelButton: {fileID: 1827302824}
+  saveLevelButton: {fileID: 683096975}
+  saveLevelAsButton: {fileID: 1031247059}
   tilemapEditPainter: {fileID: 406839164}
   showX: 95.7
   hideX: -260.44

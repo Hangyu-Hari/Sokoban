@@ -5,7 +5,7 @@ using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 /// <summary>
-/// 地图编辑器内设置 UI：点击按钮在展开 / 收起之间切换，通过修改面板 <see cref="RectTransform.anchoredPosition"/> 的 X 实现，并带过渡动画。
+/// 地图编辑器内设置 UI：展开/收起面板；打开、保存、另存为关卡（委托 <see cref="RuntimeTilemapEditPainter"/>）。
 /// 展开时按钮文案为 <c>&lt;&lt;</c>，收起时为 <c>&gt;&gt;</c>。
 /// </summary>
 [DisallowMultipleComponent]
@@ -25,6 +25,10 @@ public sealed class EditorSettings : MonoBehaviour
 
     [Tooltip("打开关卡 JSON（默认从 Assets/LevelFiles 选文件）；需 F1 编辑模式。")]
     [SerializeField] Button openLevelButton;
+    [Tooltip("保存到当前已关联的 JSON 文件；无路径时请先另存为或 Ctrl+S 首次保存。")]
+    [SerializeField] Button saveLevelButton;
+    [Tooltip("另存为：始终弹出保存对话框。")]
+    [SerializeField] Button saveLevelAsButton;
     [SerializeField] RuntimeTilemapEditPainter tilemapEditPainter;
 
     [Header("面板 anchoredPosition.x")]
@@ -48,6 +52,10 @@ public sealed class EditorSettings : MonoBehaviour
             togglePanelButton.onClick.AddListener(OnTogglePanelClicked);
         if (openLevelButton != null && tilemapEditPainter != null)
             openLevelButton.onClick.AddListener(tilemapEditPainter.OpenLevelFromFileDialog);
+        if (saveLevelButton != null && tilemapEditPainter != null)
+            saveLevelButton.onClick.AddListener(tilemapEditPainter.SaveCurrentLevelToFile);
+        if (saveLevelAsButton != null && tilemapEditPainter != null)
+            saveLevelAsButton.onClick.AddListener(tilemapEditPainter.SaveLevelAs);
     }
 
     void Start()
@@ -69,6 +77,10 @@ public sealed class EditorSettings : MonoBehaviour
             togglePanelButton.onClick.RemoveListener(OnTogglePanelClicked);
         if (openLevelButton != null && tilemapEditPainter != null)
             openLevelButton.onClick.RemoveListener(tilemapEditPainter.OpenLevelFromFileDialog);
+        if (saveLevelButton != null && tilemapEditPainter != null)
+            saveLevelButton.onClick.RemoveListener(tilemapEditPainter.SaveCurrentLevelToFile);
+        if (saveLevelAsButton != null && tilemapEditPainter != null)
+            saveLevelAsButton.onClick.RemoveListener(tilemapEditPainter.SaveLevelAs);
     }
 
     void OnTogglePanelClicked()

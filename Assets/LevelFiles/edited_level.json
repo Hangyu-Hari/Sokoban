@@ -8,6 +8,36 @@
     "boundsSizeZ": 1,
     "filledCells": [
         {
+            "x": 95,
+            "y": 97,
+            "groundKey": "wallBase:0",
+            "objectKey": ""
+        },
+        {
+            "x": 96,
+            "y": 97,
+            "groundKey": "wallBase:0",
+            "objectKey": ""
+        },
+        {
+            "x": 97,
+            "y": 97,
+            "groundKey": "wallBase:0",
+            "objectKey": ""
+        },
+        {
+            "x": 94,
+            "y": 98,
+            "groundKey": "wallBase:0",
+            "objectKey": ""
+        },
+        {
+            "x": 95,
+            "y": 98,
+            "groundKey": "wallBase:0",
+            "objectKey": ""
+        },
+        {
             "x": 97,
             "y": 100,
             "groundKey": "wallBase:0",
@@ -34,6 +64,48 @@
         {
             "x": 101,
             "y": 100,
+            "groundKey": "wallBase:0",
+            "objectKey": ""
+        },
+        {
+            "x": 96,
+            "y": 101,
+            "groundKey": "wallBase:0",
+            "objectKey": ""
+        },
+        {
+            "x": 97,
+            "y": 101,
+            "groundKey": "wallBase:0",
+            "objectKey": ""
+        },
+        {
+            "x": 99,
+            "y": 101,
+            "groundKey": "wallBase:0",
+            "objectKey": ""
+        },
+        {
+            "x": 100,
+            "y": 101,
+            "groundKey": "wallBase:0",
+            "objectKey": ""
+        },
+        {
+            "x": 97,
+            "y": 102,
+            "groundKey": "wallBase:0",
+            "objectKey": ""
+        },
+        {
+            "x": 98,
+            "y": 102,
+            "groundKey": "wallBase:0",
+            "objectKey": ""
+        },
+        {
+            "x": 99,
+            "y": 102,
             "groundKey": "wallBase:0",
             "objectKey": ""
         }

@@ -1,4 +1,7 @@
+using System;
 using System.Collections.Generic;
+using System.IO;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.Rendering;
@@ -7,7 +10,7 @@ using UnityEngine.Tilemaps;
 using UnityEngine.UI;
 
 /// <summary>
-/// Runtime：编辑模式（F1）下，工具为「光标 / 绘制 / 橡皮」三选一；Ctrl+S 保存关卡 JSON；<see cref="OpenLevelFromFileDialog"/> 供 UI 打开 JSON；光标拖曳平移；Ctrl+滚轮缩放；可限制在编辑网格内；绘制或橡皮时左键改 Tilemap。
+/// Runtime：编辑模式（F1）下，工具为「光标 / 绘制 / 橡皮」三选一；Ctrl+S 见保存逻辑；<see cref="SaveCurrentLevelToFile"/> / <see cref="SaveLevelAs"/> / <see cref="OpenLevelFromFileDialog"/> 供 UI；光标拖曳平移；Ctrl+滚轮缩放；可限制在编辑网格内；绘制或橡皮时左键改 Tilemap。无打开文件时标题为 <c>Unsaved</c> 且开局即视为未落盘（带 <c>*</c>）；有关联文件后，未写入磁盘的改动也会在 <see cref="LevelDocumentTitleText"/> 上加 <c>*</c>。
 /// 编辑网格从格坐标 (0,0,0) 起，仅配置宽高格数；开局将相机对准该网格世界中心（见 <see cref="centerCameraOnEditGridAtStart"/>）。
 /// </summary>
 [DisallowMultipleComponent]
@@ -96,6 +99,9 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     [SerializeField] Button drawToolButton;
     [SerializeField] Button eraserToolButton;
 
+    [Header("关卡文件名 UI（可选，可拖多个 TMP：有关联文件时为文件名；否则为 Unsaved；未落盘或未保存改动时加 *)")]
+    [SerializeField] TextMeshProUGUI[] levelDocumentTitleLabels;
+
     /// <summary> 当前工具：未勾选绘制且未勾选橡皮时为光标（默认）。 </summary>
     public RuntimeTilemapEditToolMode CurrentToolMode =>
         eraserModeEnabled ? RuntimeTilemapEditToolMode.Eraser
@@ -140,15 +146,76 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     bool _cursorPanDragging;
     Vector3 _cursorPanLastScreen;
     float _orthographicZoomReferenceSize;
+    /// <summary> 当前关卡 JSON 路径；空表示尚未通过打开/另存为/Ctrl+S 首次落盘。 </summary>
+    string _activeLevelSavePath;
+
+    bool _levelDocumentDirty;
+    string _lastPublishedLevelDocumentTitle;
+
+    const string NoOpenFileDisplayName = "Unsaved";
+
+    /// <summary> 供 UI 显示：当前是否已有「保存目标」文件路径。 </summary>
+    public bool HasActiveLevelSavePath => !string.IsNullOrEmpty(_activeLevelSavePath);
+
+    /// <summary> 相对磁盘：自上次成功保存或打开后，编辑区是否还有未写入的更改。 </summary>
+    public bool LevelDocumentIsDirty => _levelDocumentDirty;
+
+    /// <summary> 供标题栏显示：有关联保存路径时为文件名；否则为 <c>Unsaved</c>；未落盘或未保存更改时后缀 <c>*</c>。 </summary>
+    public string LevelDocumentTitleText => BuildLevelDocumentTitleText();
+
+    /// <summary> 标题文案变化时触发（与 <see cref="levelDocumentTitleLabels"/> 同步刷新）。 </summary>
+    public event Action OnLevelDocumentTitleChanged;
 
     /// <summary> 编辑用固定网格：最小角 <c>(0,0,0)</c>，宽高见 <see cref="fixedEditGridCellCount"/>。 </summary>
-    BoundsInt FixedEditGridCellBounds
+    public BoundsInt FixedEditGridCellBounds
     {
         get
         {
             var w = Mathf.Max(1, fixedEditGridCellCount.x);
             var h = Mathf.Max(1, fixedEditGridCellCount.y);
             return new BoundsInt(0, 0, 0, w, h, 1);
+        }
+    }
+
+    string BuildLevelDocumentTitleText()
+    {
+        var baseName = string.IsNullOrEmpty(_activeLevelSavePath)
+            ? NoOpenFileDisplayName
+            : Path.GetFileName(_activeLevelSavePath);
+        return _levelDocumentDirty ? baseName + "*" : baseName;
+    }
+
+    void MarkLevelDocumentDirty()
+    {
+        if (_levelDocumentDirty)
+            return;
+        _levelDocumentDirty = true;
+        RefreshLevelDocumentTitleUi();
+    }
+
+    void ClearLevelDocumentDirty()
+    {
+        _levelDocumentDirty = false;
+        RefreshLevelDocumentTitleUi();
+    }
+
+    void RefreshLevelDocumentTitleUi()
+    {
+        var t = BuildLevelDocumentTitleText();
+        if (levelDocumentTitleLabels != null)
+        {
+            for (var i = 0; i < levelDocumentTitleLabels.Length; i++)
+            {
+                var tmp = levelDocumentTitleLabels[i];
+                if (tmp != null)
+                    tmp.text = t;
+            }
+        }
+
+        if (t != _lastPublishedLevelDocumentTitle)
+        {
+            _lastPublishedLevelDocumentTitle = t;
+            OnLevelDocumentTitleChanged?.Invoke();
         }
     }
 
@@ -195,6 +262,11 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
 
         if (cam != null && cam.orthographic)
             _orthographicZoomReferenceSize = Mathf.Max(1e-4f, cam.orthographicSize);
+
+        if (string.IsNullOrEmpty(_activeLevelSavePath))
+            _levelDocumentDirty = true;
+
+        RefreshLevelDocumentTitleUi();
     }
 
     void WireToolModeButtons()
@@ -453,16 +525,72 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
         if (!Input.GetKeyDown(KeyCode.S))
             return;
 
-        var assets = TileAssetSettings.Instance;
-        if (assets == null || groundTilemap == null || objectsTilemap == null)
+        if (!TryGetLevelSaveContext(out var assets))
+            return;
+
+        if (string.IsNullOrEmpty(_activeLevelSavePath))
         {
-            Debug.LogWarning("[Sokoban] Ctrl+S 保存失败：缺少 Tilemap 或 TileAssetSettings。", this);
+            if (!LevelSavePathPicker.TryPickSaveJsonPath(out var picked))
+                return;
+            TrySaveLevelToPath(assets, picked);
+        }
+        else
+            TrySaveLevelToPath(assets, _activeLevelSavePath);
+    }
+
+    /// <summary> 供 UI「保存」：写入当前已关联的 JSON 文件；若无路径请先「另存为」或 Ctrl+S 首次保存。 </summary>
+    public void SaveCurrentLevelToFile()
+    {
+        if (!IsEditMode)
+        {
+            Debug.LogWarning("[Sokoban] 请先按 F1 进入编辑模式后再保存。", this);
             return;
         }
+
+        if (!TryGetLevelSaveContext(out var assets))
+            return;
+
+        if (string.IsNullOrEmpty(_activeLevelSavePath))
+        {
+            Debug.LogWarning("[Sokoban] 当前没有关卡的保存路径，请使用「另存为」或 Ctrl+S 首次选择文件。", this);
+            return;
+        }
+
+        TrySaveLevelToPath(assets, _activeLevelSavePath);
+    }
+
+    /// <summary> 供 UI「另存为」：始终弹出保存对话框，成功后切换为当前保存路径。 </summary>
+    public void SaveLevelAs()
+    {
+        if (!IsEditMode)
+        {
+            Debug.LogWarning("[Sokoban] 请先按 F1 进入编辑模式后再另存为。", this);
+            return;
+        }
+
+        if (!TryGetLevelSaveContext(out var assets))
+            return;
 
         if (!LevelSavePathPicker.TryPickSaveJsonPath(out var path))
             return;
 
+        TrySaveLevelToPath(assets, path);
+    }
+
+    bool TryGetLevelSaveContext(out TileAssetSettings assets)
+    {
+        assets = TileAssetSettings.Instance;
+        if (assets == null || groundTilemap == null || objectsTilemap == null)
+        {
+            Debug.LogWarning("[Sokoban] 保存失败：缺少 Tilemap 或 TileAssetSettings。", this);
+            return false;
+        }
+
+        return true;
+    }
+
+    void TrySaveLevelToPath(TileAssetSettings assets, string path)
+    {
         if (!SokobanLevelSaveFile.TrySave(
                 groundTilemap,
                 objectsTilemap,
@@ -471,11 +599,13 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
                 path,
                 out var err))
         {
-            Debug.LogWarning("[Sokoban] Ctrl+S 保存失败：" + err, this);
+            Debug.LogWarning("[Sokoban] 保存失败：" + err, this);
             return;
         }
 
-        Debug.Log("[Sokoban] Ctrl+S 已保存关卡到 " + path, this);
+        _activeLevelSavePath = path;
+        Debug.Log("[Sokoban] 已保存关卡到 " + path, this);
+        ClearLevelDocumentDirty();
     }
 
     /// <summary> 供 UI「打开关卡」按钮：从 JSON 读入当前编辑网格；需已在编辑模式（F1）。 </summary>
@@ -511,7 +641,9 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
 
         tilemapSettings?.RefreshFromTilemaps();
         _lastGridBounds = default;
+        _activeLevelSavePath = path;
         Debug.Log("[Sokoban] 已打开关卡：" + path, this);
+        ClearLevelDocumentDirty();
     }
 
     void UpdateEditModeCtrlOrthographicZoom()
@@ -773,29 +905,50 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
             brush = palette.CurrentBrush;
         }
 
+        var changed = false;
+
         if (brush.Layer == TilePaletteLayer.Ground)
         {
-            groundTilemap.SetTile(cell, brush.IsErase ? null : brush.Tile);
+            var prev = groundTilemap.GetTile(cell);
+            var next = brush.IsErase ? null : brush.Tile;
+            if (prev != next)
+            {
+                groundTilemap.SetTile(cell, next);
+                changed = true;
+            }
         }
         else
         {
             if (!brush.IsErase && assets != null && brush.Tile == assets.PlayerTile)
-                RemovePlayerTilesExcept(cell);
+            {
+                if (RemovePlayerTilesExcept(cell))
+                    changed = true;
+            }
 
-            objectsTilemap.SetTile(cell, brush.IsErase ? null : brush.Tile);
+            var prevObj = objectsTilemap.GetTile(cell);
+            var nextObj = brush.IsErase ? null : brush.Tile;
+            if (prevObj != nextObj)
+            {
+                objectsTilemap.SetTile(cell, nextObj);
+                changed = true;
+            }
         }
+
+        if (changed)
+            MarkLevelDocumentDirty();
 
         tilemapSettings?.RefreshFromTilemaps();
     }
 
-    void RemovePlayerTilesExcept(Vector3Int keepCell)
+    bool RemovePlayerTilesExcept(Vector3Int keepCell)
     {
         var assets = TileAssetSettings.Instance;
         if (assets == null)
-            return;
+            return false;
 
         var player = assets.PlayerTile;
         var b = objectsTilemap.cellBounds;
+        var any = false;
         for (var y = b.yMin; y < b.yMax; y++)
         {
             for (var x = b.xMin; x < b.xMax; x++)
@@ -804,9 +957,14 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
                 if (c == keepCell)
                     continue;
                 if (objectsTilemap.GetTile(c) == player)
+                {
                     objectsTilemap.SetTile(c, null);
+                    any = true;
+                }
             }
         }
+
+        return any;
     }
 
     void EnsureBrushPreviewResources()
