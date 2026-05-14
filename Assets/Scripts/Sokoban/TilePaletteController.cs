@@ -1,5 +1,7 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 using UnityEngine.UI;
@@ -37,6 +39,7 @@ public readonly struct TilePaletteBrush : IEquatable<TilePaletteBrush>
 /// <summary>
 /// 从 <see cref="TileAssetSettings"/> 在运行时生成 ScrollView Content 下的 TileUI，并维护 <see cref="CurrentBrush"/>。
 /// 可按「背景 / 物体」切换 Content 中展示的笔刷列表（<see cref="ShowGroundPalette"/> / <see cref="ShowObjectsPalette"/>）。
+/// 可选：横向滑入/滑出调色板面板（与 <see cref="EditorSettings"/> 相同，改 <see cref="RectTransform.anchoredPosition"/> 的 X）；按钮文案：展开可见时为 <c>&gt;&gt;</c>，收起隐藏时为 <c>&lt;&lt;</c>。
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class TilePaletteController : MonoBehaviour
@@ -61,9 +64,34 @@ public sealed class TilePaletteController : MonoBehaviour
     [SerializeField] Button groundLayerButton;
     [SerializeField] Button objectsLayerButton;
 
+    const string PaletteSlideLabelWhenExpandedVisible = ">>";
+    const string PaletteSlideLabelWhenCollapsedHidden = "<<";
+
+    [Header("调色板面板收起（与 EditorSettings 相同逻辑：anchoredPosition.x 在 showX / hideX 间动画切换）")]
+    [Tooltip("点击后在展开与收起之间切换；展开可见时按钮为 >>，收起隐藏时为 <<。")]
+    [SerializeField] Button paletteSlideToggleButton;
+    [Tooltip("要横向滑入/滑出的调色板面板根（RectTransform）。")]
+    [SerializeField] RectTransform paletteSlidePanel;
+    [Tooltip("按钮上的 TMP；可不拖，会自动在按钮子级里查找 TextMeshProUGUI。")]
+    [SerializeField] TextMeshProUGUI paletteSlideToggleLabelTmp;
+
+    [Header("调色板滑轨 anchoredPosition.x")]
+    [SerializeField] float paletteSlideShowX;
+    [SerializeField] float paletteSlideHideX;
+
+    [Tooltip("进入场景时调色板滑轨是否为展开（决定初始落在 showX 还是 hideX）。")]
+    [SerializeField] bool paletteSlideExpandedOnStart = true;
+
+    [Header("调色板滑轨过渡")]
+    [SerializeField, Min(0.01f)] float paletteSlideTransitionDuration = 0.28f;
+    [SerializeField] AnimationCurve paletteSlideTransitionEase = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
+
     TilePaletteLayer _displayedLayer = TilePaletteLayer.Ground;
     TilePaletteBrush _currentBrush;
     readonly List<TilePaletteItem> _paletteItems = new();
+
+    bool _paletteSlideExpanded;
+    Coroutine _paletteSlideRoutine;
 
     /// <summary> 当前 Scroll 里展示的是哪一类（背景 / 物体）。 </summary>
     public TilePaletteLayer DisplayedLayer => _displayedLayer;
@@ -80,11 +108,13 @@ public sealed class TilePaletteController : MonoBehaviour
     void Awake()
     {
         WireLayerToggleButtons();
+        WirePaletteSlideToggleButton();
     }
 
     void OnDestroy()
     {
         UnwireLayerToggleButtons();
+        UnwirePaletteSlideToggleButton();
     }
 
     void WireLayerToggleButtons()
@@ -103,13 +133,91 @@ public sealed class TilePaletteController : MonoBehaviour
             objectsLayerButton.onClick.RemoveListener(ShowObjectsPalette);
     }
 
+    void WirePaletteSlideToggleButton()
+    {
+        if (paletteSlideToggleButton != null)
+            paletteSlideToggleButton.onClick.AddListener(OnPaletteSlideToggleClicked);
+    }
+
+    void UnwirePaletteSlideToggleButton()
+    {
+        if (paletteSlideToggleButton != null)
+            paletteSlideToggleButton.onClick.RemoveListener(OnPaletteSlideToggleClicked);
+    }
+
     void Start()
     {
         _displayedLayer = defaultPaletteLayer;
+
+        EnsurePaletteSlideToggleLabelTmp();
+        if (paletteSlidePanel != null)
+        {
+            _paletteSlideExpanded = paletteSlideExpandedOnStart;
+            var p = paletteSlidePanel.anchoredPosition;
+            p.x = _paletteSlideExpanded ? paletteSlideShowX : paletteSlideHideX;
+            paletteSlidePanel.anchoredPosition = p;
+        }
+
+        ApplyPaletteSlideToggleButtonLabel();
+
         if (buildPaletteInStart)
             RebuildPalette();
         else
             RefreshLayerToggleButtonVisuals();
+    }
+
+    void OnPaletteSlideToggleClicked()
+    {
+        if (paletteSlidePanel == null)
+            return;
+
+        _paletteSlideExpanded = !_paletteSlideExpanded;
+        var targetX = _paletteSlideExpanded ? paletteSlideShowX : paletteSlideHideX;
+        ApplyPaletteSlideToggleButtonLabel();
+
+        if (_paletteSlideRoutine != null)
+            StopCoroutine(_paletteSlideRoutine);
+        _paletteSlideRoutine = StartCoroutine(AnimatePaletteSlidePanelToX(targetX));
+    }
+
+    IEnumerator AnimatePaletteSlidePanelToX(float targetX)
+    {
+        var startX = paletteSlidePanel.anchoredPosition.x;
+        var elapsed = 0f;
+        var duration = paletteSlideTransitionDuration;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            var t = Mathf.Clamp01(elapsed / duration);
+            var k = paletteSlideTransitionEase.Evaluate(t);
+            var x = Mathf.LerpUnclamped(startX, targetX, k);
+            var pos = paletteSlidePanel.anchoredPosition;
+            pos.x = x;
+            paletteSlidePanel.anchoredPosition = pos;
+            yield return null;
+        }
+
+        var end = paletteSlidePanel.anchoredPosition;
+        end.x = targetX;
+        paletteSlidePanel.anchoredPosition = end;
+        _paletteSlideRoutine = null;
+    }
+
+    void ApplyPaletteSlideToggleButtonLabel()
+    {
+        if (paletteSlideToggleLabelTmp == null)
+            return;
+        paletteSlideToggleLabelTmp.text = _paletteSlideExpanded
+            ? PaletteSlideLabelWhenExpandedVisible
+            : PaletteSlideLabelWhenCollapsedHidden;
+    }
+
+    void EnsurePaletteSlideToggleLabelTmp()
+    {
+        if (paletteSlideToggleLabelTmp != null || paletteSlideToggleButton == null)
+            return;
+        paletteSlideToggleLabelTmp = paletteSlideToggleButton.GetComponentInChildren<TextMeshProUGUI>(true);
     }
 
     /// <summary> 供 UI「背景」按钮：Content 只显示 Ground 层笔刷（默认）。 </summary>
