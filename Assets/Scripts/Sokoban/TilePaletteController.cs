@@ -115,14 +115,22 @@ public sealed class TilePaletteController : MonoBehaviour
     /// <summary> 供 UI「背景」按钮：Content 只显示 Ground 层笔刷（默认）。 </summary>
     public void ShowGroundPalette()
     {
+        if (_displayedLayer == TilePaletteLayer.Ground)
+            return;
+
         _displayedLayer = TilePaletteLayer.Ground;
+        RefreshLayerToggleButtonVisuals();
         RebuildPalette();
     }
 
     /// <summary> 供 UI「物体」按钮：Content 只显示 Objects 层笔刷。 </summary>
     public void ShowObjectsPalette()
     {
+        if (_displayedLayer == TilePaletteLayer.Objects)
+            return;
+
         _displayedLayer = TilePaletteLayer.Objects;
+        RefreshLayerToggleButtonVisuals();
         RebuildPalette();
     }
 
@@ -192,10 +200,10 @@ public sealed class TilePaletteController : MonoBehaviour
         }
 
         if (assets.GoalUncompletedTile != null)
-            AddPaletteRow(new TilePaletteBrush(TilePaletteLayer.Ground, assets.GoalUncompletedTile, false), "目标（空）");
+            AddPaletteRow(new TilePaletteBrush(TilePaletteLayer.Ground, assets.GoalUncompletedTile, false), "未完成目标点");
 
         if (assets.GoalCompletedTile != null)
-            AddPaletteRow(new TilePaletteBrush(TilePaletteLayer.Ground, assets.GoalCompletedTile, false), "目标（完成）");
+            AddPaletteRow(new TilePaletteBrush(TilePaletteLayer.Ground, assets.GoalCompletedTile, false), "已完成目标点");
     }
 
     void AddObjectsPaletteEntries(TileAssetSettings assets)
@@ -258,7 +266,7 @@ public sealed class TilePaletteController : MonoBehaviour
 
         var c = button.colors;
         c.colorMultiplier = 1f;
-        c.fadeDuration = 0.08f;
+        c.fadeDuration = 0f;
         if (selected)
         {
             c.normalColor = new Color(0.7f, 0.7f, 0.7f, 1f);
