@@ -7,7 +7,7 @@ using UnityEngine.Tilemaps;
 using UnityEngine.UI;
 
 /// <summary>
-/// Runtime：编辑模式（F1）下，工具为「光标 / 绘制 / 橡皮」三选一（默认光标）；绘制或橡皮时左键改 Tilemap。
+/// Runtime：编辑模式（F1）下，工具为「光标 / 绘制 / 橡皮」三选一（默认光标）；光标模式下按住鼠标拖曳平移相机；绘制或橡皮时左键改 Tilemap。
 /// 网格范围由 Inspector 固定，不随已铺瓦片变化。
 /// </summary>
 [DisallowMultipleComponent]
@@ -69,6 +69,13 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     [Tooltip("为 true 时为橡皮模式（与绘制互斥）。")]
     [SerializeField] bool eraserModeEnabled;
 
+    [Header("光标模式 · 拖曳平移相机")]
+    [Tooltip("编辑模式 + 光标工具时：按住鼠标在地图上拖曳，平移相机（与鼠标同向「抓地图」手感）。")]
+    [SerializeField] bool cursorDragPanCameraEnabled = true;
+    [Tooltip("0=左键，1=右键，2=中键。")]
+    [Range(0, 2)]
+    [SerializeField] int cursorPanMouseButton;
+
     [Header("工具模式按钮（拖引用即可；运行时绑定 onClick，选中项略灰）")]
     [SerializeField] Button cursorToolButton;
     [SerializeField] Button drawToolButton;
@@ -114,6 +121,9 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
 
     SpriteRenderer _brushPreviewRenderer;
     Material _brushPreviewMaterial;
+
+    bool _cursorPanDragging;
+    Vector3 _cursorPanLastScreen;
 
     void Awake()
     {
@@ -301,6 +311,9 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
         if (verts.Count == 0)
             return;
 
+        // 默认 Mesh 为 UInt16 索引，顶点数 >65535 时线框会截断/不显示；大编辑范围需 32 位索引。
+        _gridMesh.indexFormat = verts.Count > 65535 ? IndexFormat.UInt32 : IndexFormat.UInt16;
+
         _gridMesh.SetVertices(verts);
         _gridMesh.SetIndices(indices.ToArray(), MeshTopology.Lines, 0, true);
         _gridMesh.RecalculateBounds();
@@ -341,6 +354,8 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
                 SetCursorMode();
         }
 
+        UpdateCursorDragPanCamera();
+
         if (!IsEditMode)
             return;
 
@@ -364,6 +379,63 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
             return;
 
         ApplyBrushAtCell(cell);
+    }
+
+    void UpdateCursorDragPanCamera()
+    {
+        var btn = cursorPanMouseButton;
+
+        if (!IsEditMode || !cursorDragPanCameraEnabled || !IsCursorMode || groundTilemap == null)
+        {
+            if (!IsCursorMode || !IsEditMode)
+                _cursorPanDragging = false;
+            else if (Input.GetMouseButtonUp(btn))
+                _cursorPanDragging = false;
+            return;
+        }
+
+        var cam = worldCamera != null ? worldCamera : Camera.main;
+        if (cam == null)
+            return;
+
+        if (Input.GetMouseButtonDown(btn))
+        {
+            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+                _cursorPanDragging = false;
+            else
+            {
+                _cursorPanDragging = true;
+                _cursorPanLastScreen = Input.mousePosition;
+            }
+        }
+
+        if (Input.GetMouseButtonUp(btn))
+            _cursorPanDragging = false;
+
+        if (!_cursorPanDragging || !Input.GetMouseButton(btn))
+            return;
+
+        if (!TryScreenToWorldOnGroundPlane(cam, groundTilemap, _cursorPanLastScreen, out var wPrev))
+            return;
+        if (!TryScreenToWorldOnGroundPlane(cam, groundTilemap, Input.mousePosition, out var wCur))
+            return;
+
+        // 鼠标往右移时 wCur.x > wPrev.x，相机减去该差值即向左移，画面与指针同向拖动（抓地图）。
+        cam.transform.position += wPrev - wCur;
+        _cursorPanLastScreen = Input.mousePosition;
+    }
+
+    static bool TryScreenToWorldOnGroundPlane(Camera cam, Tilemap tm, Vector3 screenPosition, out Vector3 world)
+    {
+        world = default;
+        var z = tm.transform.position.z;
+        var plane = new Plane(Vector3.forward, new Vector3(0f, 0f, z));
+        var ray = cam.ScreenPointToRay(screenPosition);
+        if (!plane.Raycast(ray, out var dist))
+            return false;
+
+        world = ray.GetPoint(dist);
+        return true;
     }
 
     static bool TryScreenToCell(Camera cam, Tilemap tm, Vector3 screenPosition, out Vector3Int cell)
