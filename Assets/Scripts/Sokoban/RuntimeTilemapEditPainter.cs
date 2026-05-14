@@ -4,6 +4,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.Rendering;
 using UnityEngine.Serialization;
 using UnityEngine.Tilemaps;
+using UnityEngine.UI;
 
 /// <summary>
 /// Runtime：编辑模式（F1）下，工具为「光标 / 绘制 / 橡皮」三选一（默认光标）；绘制或橡皮时左键改 Tilemap。
@@ -66,6 +67,11 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     [Tooltip("为 true 时为橡皮模式（与绘制互斥）。")]
     [SerializeField] bool eraserModeEnabled;
 
+    [Header("工具模式按钮（选中项略灰）")]
+    [SerializeField] Button cursorToolButton;
+    [SerializeField] Button drawToolButton;
+    [SerializeField] Button eraserToolButton;
+
     /// <summary> 当前工具：未勾选绘制且未勾选橡皮时为光标（默认）。 </summary>
     public RuntimeTilemapEditToolMode CurrentToolMode =>
         eraserModeEnabled ? RuntimeTilemapEditToolMode.Eraser
@@ -80,6 +86,7 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     {
         drawModeEnabled = mode == RuntimeTilemapEditToolMode.Draw;
         eraserModeEnabled = mode == RuntimeTilemapEditToolMode.Eraser;
+        RefreshToolModeButtonVisuals();
     }
 
     /// <summary> 是否允许用当前笔刷在地图上绘制。 </summary>
@@ -127,6 +134,7 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
             IsEditMode = true;
 
         EnsureGridResources();
+        RefreshToolModeButtonVisuals();
     }
 
     void OnDestroy()
@@ -595,5 +603,40 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     {
         if (_brushPreviewRenderer != null)
             _brushPreviewRenderer.enabled = visible;
+    }
+
+    void RefreshToolModeButtonVisuals()
+    {
+        ApplyToggleButtonSelectedLook(cursorToolButton, CurrentToolMode == RuntimeTilemapEditToolMode.Cursor);
+        ApplyToggleButtonSelectedLook(drawToolButton, CurrentToolMode == RuntimeTilemapEditToolMode.Draw);
+        ApplyToggleButtonSelectedLook(eraserToolButton, CurrentToolMode == RuntimeTilemapEditToolMode.Eraser);
+    }
+
+    static void ApplyToggleButtonSelectedLook(Button button, bool selected)
+    {
+        if (button == null)
+            return;
+
+        var c = button.colors;
+        c.colorMultiplier = 1f;
+        c.fadeDuration = 0.08f;
+        if (selected)
+        {
+            c.normalColor = new Color(0.7f, 0.7f, 0.7f, 1f);
+            c.highlightedColor = new Color(0.78f, 0.78f, 0.78f, 1f);
+            c.pressedColor = new Color(0.62f, 0.62f, 0.62f, 1f);
+            c.selectedColor = c.normalColor;
+            c.disabledColor = new Color(0.5f, 0.5f, 0.5f, 0.5f);
+        }
+        else
+        {
+            c.normalColor = Color.white;
+            c.highlightedColor = new Color(0.95f, 0.95f, 0.95f, 1f);
+            c.pressedColor = new Color(0.85f, 0.85f, 0.85f, 1f);
+            c.selectedColor = Color.white;
+            c.disabledColor = new Color(0.78f, 0.78f, 0.78f, 0.5f);
+        }
+
+        button.colors = c;
     }
 }

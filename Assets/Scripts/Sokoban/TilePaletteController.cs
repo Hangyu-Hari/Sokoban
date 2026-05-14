@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
+using UnityEngine.UI;
 
 /// <summary> 笔刷落在 Ground 还是 Objects。 </summary>
 public enum TilePaletteLayer
@@ -56,6 +57,10 @@ public sealed class TilePaletteController : MonoBehaviour
     [Tooltip("首次生成时默认展示背景层还是物体层笔刷。")]
     [SerializeField] TilePaletteLayer defaultPaletteLayer = TilePaletteLayer.Ground;
 
+    [Header("层切换按钮（选中项略灰）")]
+    [SerializeField] Button groundLayerButton;
+    [SerializeField] Button objectsLayerButton;
+
     TilePaletteLayer _displayedLayer = TilePaletteLayer.Ground;
     TilePaletteBrush _currentBrush;
     readonly List<TilePaletteBrush> _builtBrushes = new();
@@ -74,6 +79,8 @@ public sealed class TilePaletteController : MonoBehaviour
         _displayedLayer = defaultPaletteLayer;
         if (buildPaletteInStart)
             RebuildPalette();
+        else
+            RefreshLayerToggleButtonVisuals();
     }
 
     /// <summary> 供 UI「背景」按钮：Content 只显示 Ground 层笔刷（默认）。 </summary>
@@ -126,6 +133,8 @@ public sealed class TilePaletteController : MonoBehaviour
 
         if (_builtBrushes.Count > 0)
             SetCurrentBrush(_builtBrushes[0]);
+
+        RefreshLayerToggleButtonVisuals();
     }
 
     void AddGroundPaletteEntries(TileAssetSettings assets)
@@ -192,5 +201,39 @@ public sealed class TilePaletteController : MonoBehaviour
     {
         _currentBrush = brush;
         BrushChanged?.Invoke(brush);
+    }
+
+    void RefreshLayerToggleButtonVisuals()
+    {
+        ApplyToggleButtonSelectedLook(groundLayerButton, _displayedLayer == TilePaletteLayer.Ground);
+        ApplyToggleButtonSelectedLook(objectsLayerButton, _displayedLayer == TilePaletteLayer.Objects);
+    }
+
+    static void ApplyToggleButtonSelectedLook(Button button, bool selected)
+    {
+        if (button == null)
+            return;
+
+        var c = button.colors;
+        c.colorMultiplier = 1f;
+        c.fadeDuration = 0.08f;
+        if (selected)
+        {
+            c.normalColor = new Color(0.7f, 0.7f, 0.7f, 1f);
+            c.highlightedColor = new Color(0.78f, 0.78f, 0.78f, 1f);
+            c.pressedColor = new Color(0.62f, 0.62f, 0.62f, 1f);
+            c.selectedColor = c.normalColor;
+            c.disabledColor = new Color(0.5f, 0.5f, 0.5f, 0.5f);
+        }
+        else
+        {
+            c.normalColor = Color.white;
+            c.highlightedColor = new Color(0.95f, 0.95f, 0.95f, 1f);
+            c.pressedColor = new Color(0.85f, 0.85f, 0.85f, 1f);
+            c.selectedColor = Color.white;
+            c.disabledColor = new Color(0.78f, 0.78f, 0.78f, 0.5f);
+        }
+
+        button.colors = c;
     }
 }
