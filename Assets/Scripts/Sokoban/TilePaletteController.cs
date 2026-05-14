@@ -57,7 +57,7 @@ public sealed class TilePaletteController : MonoBehaviour
     [Tooltip("首次生成时默认展示背景层还是物体层笔刷。")]
     [SerializeField] TilePaletteLayer defaultPaletteLayer = TilePaletteLayer.Ground;
 
-    [Header("层切换按钮（选中项略灰）")]
+    [Header("层切换按钮（拖引用即可；运行时绑定 onClick，选中项略灰）")]
     [SerializeField] Button groundLayerButton;
     [SerializeField] Button objectsLayerButton;
 
@@ -76,6 +76,32 @@ public sealed class TilePaletteController : MonoBehaviour
 
     /// <summary> 选中笔刷变化时触发。 </summary>
     public event Action<TilePaletteBrush> BrushChanged;
+
+    void Awake()
+    {
+        WireLayerToggleButtons();
+    }
+
+    void OnDestroy()
+    {
+        UnwireLayerToggleButtons();
+    }
+
+    void WireLayerToggleButtons()
+    {
+        if (groundLayerButton != null)
+            groundLayerButton.onClick.AddListener(ShowGroundPalette);
+        if (objectsLayerButton != null)
+            objectsLayerButton.onClick.AddListener(ShowObjectsPalette);
+    }
+
+    void UnwireLayerToggleButtons()
+    {
+        if (groundLayerButton != null)
+            groundLayerButton.onClick.RemoveListener(ShowGroundPalette);
+        if (objectsLayerButton != null)
+            objectsLayerButton.onClick.RemoveListener(ShowObjectsPalette);
+    }
 
     void Start()
     {

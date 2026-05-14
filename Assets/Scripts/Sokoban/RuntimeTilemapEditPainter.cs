@@ -34,6 +34,8 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
 
     [Header("编辑模式")]
     [SerializeField] KeyCode toggleEditModeKey = KeyCode.F1;
+    [Tooltip("编辑模式（F1）开启时：E 橡皮、B 绘制、S 光标。")]
+    [SerializeField] bool toolHotkeysEnabled = true;
     [SerializeField] bool startInEditMode;
 
     [Header("网格")]
@@ -67,7 +69,7 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     [Tooltip("为 true 时为橡皮模式（与绘制互斥）。")]
     [SerializeField] bool eraserModeEnabled;
 
-    [Header("工具模式按钮（选中项略灰）")]
+    [Header("工具模式按钮（拖引用即可；运行时绑定 onClick，选中项略灰）")]
     [SerializeField] Button cursorToolButton;
     [SerializeField] Button drawToolButton;
     [SerializeField] Button eraserToolButton;
@@ -78,7 +80,7 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
         : drawModeEnabled ? RuntimeTilemapEditToolMode.Draw
         : RuntimeTilemapEditToolMode.Cursor;
 
-    /// <summary> 供 UI「光标」按钮：不绘制、不擦除（默认进入编辑时应为此模式）。 </summary>
+    /// <summary> 供 UI「光标」按钮，或与快捷键 S。 </summary>
     public void SetCursorMode() => SetToolMode(RuntimeTilemapEditToolMode.Cursor);
 
     /// <summary> 三选一设置工具。 </summary>
@@ -89,6 +91,12 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
         RefreshToolModeButtonVisuals();
     }
 
+    /// <summary> 供 UI「绘制」按钮，或与快捷键 B。 </summary>
+    public void SetDrawMode() => SetToolMode(RuntimeTilemapEditToolMode.Draw);
+
+    /// <summary> 供 UI「橡皮」按钮，或与快捷键 E。 </summary>
+    public void SetEraserMode() => SetToolMode(RuntimeTilemapEditToolMode.Eraser);
+
     /// <summary> 是否允许用当前笔刷在地图上绘制。 </summary>
     public bool DrawModeEnabled => drawModeEnabled;
 
@@ -97,24 +105,6 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
 
     /// <summary> 是否为光标模式（既不绘制也不擦除）。 </summary>
     public bool IsCursorMode => !drawModeEnabled && !eraserModeEnabled;
-
-    /// <summary> 供 UI「绘制」按钮：开启绘制并关掉橡皮与光标。 </summary>
-    public void SetDrawModeEnabled(bool enabled)
-    {
-        if (enabled)
-            SetToolMode(RuntimeTilemapEditToolMode.Draw);
-        else if (drawModeEnabled)
-            SetToolMode(RuntimeTilemapEditToolMode.Cursor);
-    }
-
-    /// <summary> 供 UI「橡皮」按钮：开启橡皮并关掉绘制与光标。 </summary>
-    public void SetEraserModeEnabled(bool enabled)
-    {
-        if (enabled)
-            SetToolMode(RuntimeTilemapEditToolMode.Eraser);
-        else if (eraserModeEnabled)
-            SetToolMode(RuntimeTilemapEditToolMode.Cursor);
-    }
 
     Mesh _gridMesh;
     MeshFilter _gridMeshFilter;
@@ -133,12 +123,35 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
         if (startInEditMode)
             IsEditMode = true;
 
+        WireToolModeButtons();
         EnsureGridResources();
         RefreshToolModeButtonVisuals();
     }
 
+    void WireToolModeButtons()
+    {
+        if (cursorToolButton != null)
+            cursorToolButton.onClick.AddListener(SetCursorMode);
+        if (drawToolButton != null)
+            drawToolButton.onClick.AddListener(SetDrawMode);
+        if (eraserToolButton != null)
+            eraserToolButton.onClick.AddListener(SetEraserMode);
+    }
+
+    void UnwireToolModeButtons()
+    {
+        if (cursorToolButton != null)
+            cursorToolButton.onClick.RemoveListener(SetCursorMode);
+        if (drawToolButton != null)
+            drawToolButton.onClick.RemoveListener(SetDrawMode);
+        if (eraserToolButton != null)
+            eraserToolButton.onClick.RemoveListener(SetEraserMode);
+    }
+
     void OnDestroy()
     {
+        UnwireToolModeButtons();
+
         if (IsEditMode)
             IsEditMode = false;
 
@@ -317,6 +330,16 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     {
         if (Input.GetKeyDown(toggleEditModeKey))
             IsEditMode = !IsEditMode;
+
+        if (toolHotkeysEnabled && IsEditMode)
+        {
+            if (Input.GetKeyDown(KeyCode.E))
+                SetEraserMode();
+            if (Input.GetKeyDown(KeyCode.B))
+                SetDrawMode();
+            if (Input.GetKeyDown(KeyCode.S))
+                SetCursorMode();
+        }
 
         if (!IsEditMode)
             return;
