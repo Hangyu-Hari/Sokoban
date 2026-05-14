@@ -1125,9 +1125,8 @@ MonoBehaviour:
   gridColor: {r: 1, g: 1, b: 1, a: 0.35}
   gridZOffset: -0.02
   gridSortingOrder: 50
-  fixedEditGridCellBounds:
-    m_Position: {x: -8, y: -8, z: 0}
-    m_Size: {x: 16, y: 16, z: 1}
+  fixedEditGridCellCount: {x: 200, y: 200}
+  centerCameraOnEditGridAtStart: 1
   showBrushTilePreview: 1
   brushPreviewAlpha: 0.45
   showEraserHoverPreview: 1
@@ -1136,6 +1135,9 @@ MonoBehaviour:
   brushPreviewSortingOffset: 40
   drawModeEnabled: 0
   eraserModeEnabled: 0
+  cursorDragPanCameraEnabled: 1
+  cursorPanMouseButton: 0
+  clampCameraToEditGridBounds: 1
   cursorToolButton: {fileID: 1215006524}
   drawToolButton: {fileID: 1648894340}
   eraserToolButton: {fileID: 5664001}

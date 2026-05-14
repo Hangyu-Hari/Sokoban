@@ -7,10 +7,11 @@ using UnityEngine.Tilemaps;
 using UnityEngine.UI;
 
 /// <summary>
-/// Runtime：编辑模式（F1）下，工具为「光标 / 绘制 / 橡皮」三选一（默认光标）；光标模式下按住鼠标拖曳平移相机（可限制在 fixedEditGridCellBounds 内）；绘制或橡皮时左键改 Tilemap。
-/// 网格范围由 Inspector 固定，不随已铺瓦片变化。
+/// Runtime：编辑模式（F1）下，工具为「光标 / 绘制 / 橡皮」三选一（默认光标）；光标模式下按住鼠标拖曳平移相机（可限制在编辑网格内）；绘制或橡皮时左键改 Tilemap。
+/// 编辑网格从格坐标 (0,0,0) 起，仅配置宽高格数；开局将相机对准该网格世界中心（见 <see cref="centerCameraOnEditGridAtStart"/>）。
 /// </summary>
 [DisallowMultipleComponent]
+[DefaultExecutionOrder(100)]
 public sealed class RuntimeTilemapEditPainter : MonoBehaviour
 {
     public static bool IsEditMode { get; private set; }
@@ -47,9 +48,11 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     [Tooltip("沿相机朝向略抬高，减轻与瓦片 Z 重叠闪烁。")]
     [SerializeField] float gridZOffset = -0.02f;
     [SerializeField] int gridSortingOrder = 50;
-    [Tooltip("网格覆盖的格子范围（与是否铺瓦无关）。x,y,z 为最小格坐标，后三项为 size。")]
-    [FormerlySerializedAs("gridBoundsWhenNoTiles")]
-    [SerializeField] BoundsInt fixedEditGridCellBounds = new(-8, -8, 0, 16, 16, 1);
+    [Tooltip("编辑网格宽高（格数）；格范围固定为 x∈[0,width)、y∈[0,height)、z 单层。")]
+    [SerializeField] Vector2Int fixedEditGridCellCount = new(16, 16);
+
+    [Tooltip("开局（Start）将相机 XY 对准编辑网格的世界包围盒中心，保留相机原 Z。晚于默认脚本执行，以便覆盖 TilemapSettings 的初次对相机。")]
+    [SerializeField] bool centerCameraOnEditGridAtStart = true;
 
     [Header("笔刷预览")]
     [SerializeField] bool showBrushTilePreview = true;
@@ -75,7 +78,7 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     [Tooltip("0=左键，1=右键，2=中键。")]
     [Range(0, 2)]
     [SerializeField] int cursorPanMouseButton;
-    [Tooltip("编辑模式（F1）下将相机限制在「网格」世界范围内，避免看到 fixedEditGridCellBounds 外的空白。")]
+    [Tooltip("编辑模式（F1）下将相机限制在「网格」世界范围内，避免看到编辑网格外的空白。")]
     [SerializeField] bool clampCameraToEditGridBounds = true;
 
     [Header("工具模式按钮（拖引用即可；运行时绑定 onClick，选中项略灰）")]
@@ -127,6 +130,23 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     bool _cursorPanDragging;
     Vector3 _cursorPanLastScreen;
 
+    /// <summary> 编辑用固定网格：最小角 <c>(0,0,0)</c>，宽高见 <see cref="fixedEditGridCellCount"/>。 </summary>
+    BoundsInt FixedEditGridCellBounds
+    {
+        get
+        {
+            var w = Mathf.Max(1, fixedEditGridCellCount.x);
+            var h = Mathf.Max(1, fixedEditGridCellCount.y);
+            return new BoundsInt(0, 0, 0, w, h, 1);
+        }
+    }
+
+    void OnValidate()
+    {
+        fixedEditGridCellCount.x = Mathf.Max(1, fixedEditGridCellCount.x);
+        fixedEditGridCellCount.y = Mathf.Max(1, fixedEditGridCellCount.y);
+    }
+
     void Awake()
     {
         if (tilemapSettings == null)
@@ -138,6 +158,27 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
         WireToolModeButtons();
         EnsureGridResources();
         RefreshToolModeButtonVisuals();
+    }
+
+    void Start()
+    {
+        if (!centerCameraOnEditGridAtStart)
+            return;
+
+        var cam = worldCamera != null ? worldCamera : Camera.main;
+        if (cam == null || groundTilemap == null)
+            return;
+
+        if (!TryGetFixedEditGridPlaneMinMax(out var minX, out var maxX, out var minY, out var maxY))
+            return;
+
+        var cx = (minX + maxX) * 0.5f;
+        var cy = (minY + maxY) * 0.5f;
+        var p = cam.transform.position;
+        cam.transform.position = new Vector3(cx, cy, p.z);
+
+        if (clampCameraToEditGridBounds && cam.orthographic)
+            ClampCameraToFixedEditGrid(cam);
     }
 
     void WireToolModeButtons()
@@ -200,7 +241,7 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
             return;
         }
 
-        var b = fixedEditGridCellBounds;
+        var b = FixedEditGridCellBounds;
         if (b.size.x <= 0 || b.size.y <= 0)
         {
             SetGridVisible(false);
@@ -455,7 +496,7 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
         minX = minY = float.PositiveInfinity;
         maxX = maxY = float.NegativeInfinity;
 
-        var cellBounds = fixedEditGridCellBounds;
+        var cellBounds = FixedEditGridCellBounds;
         if (cellBounds.size.x <= 0 || cellBounds.size.y <= 0)
             return false;
 
