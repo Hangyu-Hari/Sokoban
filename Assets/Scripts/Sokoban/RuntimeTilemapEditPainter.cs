@@ -7,7 +7,7 @@ using UnityEngine.Tilemaps;
 using UnityEngine.UI;
 
 /// <summary>
-/// Runtime：编辑模式（F1）下，工具为「光标 / 绘制 / 橡皮」三选一（默认光标）；光标模式下按住鼠标拖曳平移相机；绘制或橡皮时左键改 Tilemap。
+/// Runtime：编辑模式（F1）下，工具为「光标 / 绘制 / 橡皮」三选一（默认光标）；光标模式下按住鼠标拖曳平移相机（可限制在 fixedEditGridCellBounds 内）；绘制或橡皮时左键改 Tilemap。
 /// 网格范围由 Inspector 固定，不随已铺瓦片变化。
 /// </summary>
 [DisallowMultipleComponent]
@@ -75,6 +75,8 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     [Tooltip("0=左键，1=右键，2=中键。")]
     [Range(0, 2)]
     [SerializeField] int cursorPanMouseButton;
+    [Tooltip("编辑模式（F1）下将相机限制在「网格」世界范围内，避免看到 fixedEditGridCellBounds 外的空白。")]
+    [SerializeField] bool clampCameraToEditGridBounds = true;
 
     [Header("工具模式按钮（拖引用即可；运行时绑定 onClick，选中项略灰）")]
     [SerializeField] Button cursorToolButton;
@@ -385,44 +387,181 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     {
         var btn = cursorPanMouseButton;
 
-        if (!IsEditMode || !cursorDragPanCameraEnabled || !IsCursorMode || groundTilemap == null)
+        if (!IsEditMode || groundTilemap == null)
         {
-            if (!IsCursorMode || !IsEditMode)
-                _cursorPanDragging = false;
-            else if (Input.GetMouseButtonUp(btn))
-                _cursorPanDragging = false;
+            _cursorPanDragging = false;
             return;
         }
 
         var cam = worldCamera != null ? worldCamera : Camera.main;
-        if (cam == null)
-            return;
 
-        if (Input.GetMouseButtonDown(btn))
+        if (cursorDragPanCameraEnabled && IsCursorMode)
         {
-            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
-                _cursorPanDragging = false;
-            else
+            if (Input.GetMouseButtonDown(btn))
             {
-                _cursorPanDragging = true;
-                _cursorPanLastScreen = Input.mousePosition;
+                if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+                    _cursorPanDragging = false;
+                else
+                {
+                    _cursorPanDragging = true;
+                    _cursorPanLastScreen = Input.mousePosition;
+                }
+            }
+
+            if (Input.GetMouseButtonUp(btn))
+                _cursorPanDragging = false;
+
+            if (_cursorPanDragging && Input.GetMouseButton(btn) && cam != null)
+            {
+                if (TryScreenToWorldOnGroundPlane(cam, groundTilemap, _cursorPanLastScreen, out var wPrev)
+                    && TryScreenToWorldOnGroundPlane(cam, groundTilemap, Input.mousePosition, out var wCur))
+                {
+                    // 鼠标往右移时 wCur.x > wPrev.x，相机减去该差值即向左移，画面与指针同向拖动（抓地图）。
+                    cam.transform.position += wPrev - wCur;
+                    _cursorPanLastScreen = Input.mousePosition;
+                }
             }
         }
-
-        if (Input.GetMouseButtonUp(btn))
+        else
             _cursorPanDragging = false;
 
-        if (!_cursorPanDragging || !Input.GetMouseButton(btn))
+        if (clampCameraToEditGridBounds && cam != null)
+            ClampCameraToFixedEditGrid(cam);
+    }
+
+    void ClampCameraToFixedEditGrid(Camera cam)
+    {
+        if (!cam.orthographic || groundTilemap == null || !TryGetFixedEditGridPlaneMinMax(out var gx0, out var gx1, out var gy0, out var gy1))
             return;
 
-        if (!TryScreenToWorldOnGroundPlane(cam, groundTilemap, _cursorPanLastScreen, out var wPrev))
-            return;
-        if (!TryScreenToWorldOnGroundPlane(cam, groundTilemap, Input.mousePosition, out var wCur))
-            return;
+        var planeZ = groundTilemap.transform.position.z;
+        for (var iter = 0; iter < 8; iter++)
+        {
+            if (!TryGetCameraViewPlaneMinMax(cam, planeZ, out var vx0, out var vx1, out var vy0, out var vy1))
+                return;
 
-        // 鼠标往右移时 wCur.x > wPrev.x，相机减去该差值即向左移，画面与指针同向拖动（抓地图）。
-        cam.transform.position += wPrev - wCur;
-        _cursorPanLastScreen = Input.mousePosition;
+            var dx = Compute1DClampDelta(vx0, vx1, gx0, gx1);
+            var dy = Compute1DClampDelta(vy0, vy1, gy0, gy1);
+            if (Mathf.Abs(dx) < 1e-5f && Mathf.Abs(dy) < 1e-5f)
+                break;
+
+            var p = cam.transform.position;
+            cam.transform.position = new Vector3(p.x + dx, p.y + dy, p.z);
+        }
+    }
+
+    bool TryGetFixedEditGridPlaneMinMax(out float minX, out float maxX, out float minY, out float maxY)
+    {
+        minX = minY = float.PositiveInfinity;
+        maxX = maxY = float.NegativeInfinity;
+
+        var cellBounds = fixedEditGridCellBounds;
+        if (cellBounds.size.x <= 0 || cellBounds.size.y <= 0)
+            return false;
+
+        var grid = groundTilemap.layoutGrid;
+        if (grid == null)
+            return false;
+
+        var bump = Vector3.zero;
+        var z = cellBounds.zMin;
+        var xMin = float.PositiveInfinity;
+        var xMax = float.NegativeInfinity;
+        var yMin = float.PositiveInfinity;
+        var yMax = float.NegativeInfinity;
+
+        void EncasePoint(Vector3 p)
+        {
+            xMin = Mathf.Min(xMin, p.x);
+            xMax = Mathf.Max(xMax, p.x);
+            yMin = Mathf.Min(yMin, p.y);
+            yMax = Mathf.Max(yMax, p.y);
+        }
+
+        void EncaseCell(Vector3Int cell)
+        {
+            GetCellCornersWorld(grid, cell, bump, out var ll, out var lr, out var ur, out var ul);
+            EncasePoint(ll);
+            EncasePoint(lr);
+            EncasePoint(ur);
+            EncasePoint(ul);
+        }
+
+        for (var x = cellBounds.xMin; x < cellBounds.xMax; x++)
+        {
+            EncaseCell(new Vector3Int(x, cellBounds.yMin, z));
+            EncaseCell(new Vector3Int(x, cellBounds.yMax - 1, z));
+        }
+
+        for (var y = cellBounds.yMin + 1; y < cellBounds.yMax - 1; y++)
+        {
+            EncaseCell(new Vector3Int(cellBounds.xMin, y, z));
+            EncaseCell(new Vector3Int(cellBounds.xMax - 1, y, z));
+        }
+
+        if (float.IsPositiveInfinity(xMin))
+            return false;
+
+        minX = xMin;
+        maxX = xMax;
+        minY = yMin;
+        maxY = yMax;
+        return true;
+    }
+
+    static bool TryGetCameraViewPlaneMinMax(Camera cam, float planeZ, out float minX, out float maxX, out float minY, out float maxY)
+    {
+        minX = minY = float.PositiveInfinity;
+        maxX = maxY = float.NegativeInfinity;
+
+        var plane = new Plane(Vector3.forward, new Vector3(0f, 0f, planeZ));
+
+        var xMin = float.PositiveInfinity;
+        var xMax = float.NegativeInfinity;
+        var yMin = float.PositiveInfinity;
+        var yMax = float.NegativeInfinity;
+
+        void Corner(Vector2 vp)
+        {
+            var ray = cam.ViewportPointToRay(new Vector3(vp.x, vp.y, 0f));
+            if (!plane.Raycast(ray, out var dist))
+                return;
+            var p = ray.GetPoint(dist);
+            xMin = Mathf.Min(xMin, p.x);
+            xMax = Mathf.Max(xMax, p.x);
+            yMin = Mathf.Min(yMin, p.y);
+            yMax = Mathf.Max(yMax, p.y);
+        }
+
+        Corner(new Vector2(0f, 0f));
+        Corner(new Vector2(1f, 0f));
+        Corner(new Vector2(0f, 1f));
+        Corner(new Vector2(1f, 1f));
+
+        if (float.IsPositiveInfinity(xMin))
+            return false;
+
+        minX = xMin;
+        maxX = xMax;
+        minY = yMin;
+        maxY = yMax;
+        return true;
+    }
+
+    static float Compute1DClampDelta(float vmin, float vmax, float boundMin, float boundMax)
+    {
+        var span = vmax - vmin;
+        var boundSpan = boundMax - boundMin;
+        const float eps = 1e-4f;
+        if (span > boundSpan + eps)
+            return 0.5f * (boundMin + boundMax - vmin - vmax);
+
+        var delta = 0f;
+        if (vmin < boundMin)
+            delta += boundMin - vmin;
+        if (vmax + delta > boundMax)
+            delta += boundMax - (vmax + delta);
+        return delta;
     }
 
     static bool TryScreenToWorldOnGroundPlane(Camera cam, Tilemap tm, Vector3 screenPosition, out Vector3 world)
