@@ -29,6 +29,9 @@ public sealed class TilemapSettings : MonoBehaviour
         TryBootstrapLevel();
     }
 
+    /// <summary> 从当前 Tilemap 重新解析关卡（例如 Runtime 编辑后调用）。 </summary>
+    public bool RefreshFromTilemaps() => TryBootstrapLevel();
+
     bool TryBootstrapLevel()
     {
         var assets = Assets;
@@ -172,6 +175,9 @@ public sealed class TilemapSettings : MonoBehaviour
 
         var assets = Assets;
         if (assets == null)
+            return;
+
+        if (RuntimeTilemapEditPainter.IsEditMode)
             return;
 
         var ui = LevelUIManager.Instance;
