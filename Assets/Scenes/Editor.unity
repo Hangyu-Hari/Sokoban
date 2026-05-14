@@ -6280,6 +6280,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   togglePanelButton: {fileID: 1242998120}
   panelContent: {fileID: 662861597}
+  toggleButtonLabelTmp: {fileID: 1609413905}
+  openLevelButton: {fileID: 1827302824}
+  tilemapEditPainter: {fileID: 406839164}
   showX: 95.7
   hideX: -260.44
   expandedOnStart: 1
