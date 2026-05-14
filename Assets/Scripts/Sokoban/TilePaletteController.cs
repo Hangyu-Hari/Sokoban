@@ -63,13 +63,16 @@ public sealed class TilePaletteController : MonoBehaviour
 
     TilePaletteLayer _displayedLayer = TilePaletteLayer.Ground;
     TilePaletteBrush _currentBrush;
-    readonly List<TilePaletteBrush> _builtBrushes = new();
+    readonly List<TilePaletteItem> _paletteItems = new();
 
     /// <summary> 当前 Scroll 里展示的是哪一类（背景 / 物体）。 </summary>
     public TilePaletteLayer DisplayedLayer => _displayedLayer;
 
     /// <summary> 当前选中的笔刷；落笔脚本读取此值。 </summary>
     public TilePaletteBrush CurrentBrush => _currentBrush;
+
+    /// <summary> 玩家是否已在列表里点选过瓦片（重建列表后需重新点选）。 </summary>
+    public bool HasPaintBrushSelected => !_currentBrush.IsErase && _currentBrush.Tile != null;
 
     /// <summary> 选中笔刷变化时触发。 </summary>
     public event Action<TilePaletteBrush> BrushChanged;
@@ -124,17 +127,17 @@ public sealed class TilePaletteController : MonoBehaviour
         for (var i = content.childCount - 1; i >= 0; i--)
             Destroy(content.GetChild(i).gameObject);
 
-        _builtBrushes.Clear();
+        _paletteItems.Clear();
 
         if (_displayedLayer == TilePaletteLayer.Ground)
             AddGroundPaletteEntries(assets);
         else
             AddObjectsPaletteEntries(assets);
 
-        if (_builtBrushes.Count > 0)
-            SetCurrentBrush(_builtBrushes[0]);
-
+        _currentBrush = default;
+        RefreshPaletteTileEntryVisuals();
         RefreshLayerToggleButtonVisuals();
+        BrushChanged?.Invoke(_currentBrush);
     }
 
     void AddGroundPaletteEntries(TileAssetSettings assets)
@@ -189,18 +192,31 @@ public sealed class TilePaletteController : MonoBehaviour
             return;
         }
 
-        _builtBrushes.Add(brush);
-
         if (brush.IsErase)
-            item.Setup((Sprite)null, displayName, () => SetCurrentBrush(brush));
+            item.Setup((Sprite)null, displayName, brush, () => SetCurrentBrush(brush));
         else
-            item.Setup(brush.Tile, displayName, () => SetCurrentBrush(brush));
+            item.Setup(brush.Tile, displayName, brush, () => SetCurrentBrush(brush));
+
+        _paletteItems.Add(item);
     }
 
     void SetCurrentBrush(TilePaletteBrush brush)
     {
         _currentBrush = brush;
+        RefreshPaletteTileEntryVisuals();
         BrushChanged?.Invoke(brush);
+    }
+
+    void RefreshPaletteTileEntryVisuals()
+    {
+        var has = HasPaintBrushSelected;
+        for (var i = 0; i < _paletteItems.Count; i++)
+        {
+            var item = _paletteItems[i];
+            if (item == null)
+                continue;
+            item.SetEntrySelected(has && _currentBrush.Equals(item.BoundBrush));
+        }
     }
 
     void RefreshLayerToggleButtonVisuals()

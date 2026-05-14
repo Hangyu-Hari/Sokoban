@@ -368,7 +368,11 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
         if (eraserModeEnabled)
             brush = new TilePaletteBrush(palette.DisplayedLayer, null, true);
         else
+        {
+            if (!palette.HasPaintBrushSelected)
+                return;
             brush = palette.CurrentBrush;
+        }
 
         if (brush.Layer == TilePaletteLayer.Ground)
         {
@@ -492,6 +496,12 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
         }
 
         if (!showBrushTilePreview || !drawModeEnabled)
+        {
+            SetBrushPreviewVisible(false);
+            return;
+        }
+
+        if (!palette.HasPaintBrushSelected)
         {
             SetBrushPreviewVisible(false);
             return;
