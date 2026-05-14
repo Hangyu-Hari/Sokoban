@@ -56,12 +56,8 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     [SerializeField] bool showEraserHoverPreview = true;
     [Range(0.05f, 1f)]
     [SerializeField] float eraserHoverPreviewAlpha = 0.45f;
-    [Tooltip(
-        "叠在「格内已有瓦片」的 Sprite 上时的 RGB 乘色。笔刷预览用笔刷图，与底下不同所以白半透明就明显；" +
-        "橡皮若仍用 (1,1,1) 会与瓦片完全重合，看起来像没预览；默认略偏红以便辨认。")]
+    [Tooltip("橡皮叠在格内同一张 Sprite 上时的 RGB 乘色；(1,1,1) 会与底下瓦片糊成一片。")]
     [SerializeField] Color eraserHoverMultiplyOnTile = new(1f, 0.52f, 0.52f, 1f);
-    [Tooltip("橡皮预览相对笔刷预览，沿相机朝向多拉出一点，减轻与 Tilemap 同图 Z 重叠。")]
-    [SerializeField] float eraserHoverExtraCameraForward = 0.055f;
     [SerializeField] int brushPreviewSortingOffset = 40;
 
     [Header("绘制 / 光标 / 橡皮")]
@@ -69,10 +65,6 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     [SerializeField] bool drawModeEnabled;
     [Tooltip("为 true 时为橡皮模式（与绘制互斥）。")]
     [SerializeField] bool eraserModeEnabled;
-
-    [Header("Debug（橡皮）")]
-    [Tooltip("橡皮模式下每秒在 Console 打印一次：鼠标格坐标、当前调色板层、HasTile / GetTile / GetSprite 等。")]
-    [SerializeField] bool debugEraserTileReadEverySecond;
 
     /// <summary> 当前工具：未勾选绘制且未勾选橡皮时为光标（默认）。 </summary>
     public RuntimeTilemapEditToolMode CurrentToolMode =>
@@ -126,8 +118,6 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     SpriteRenderer _brushPreviewRenderer;
     Material _brushPreviewMaterial;
 
-    float _nextEraserDebugLogUnscaledTime;
-
     void Awake()
     {
         if (tilemapSettings == null)
@@ -160,7 +150,6 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     void LateUpdate()
     {
         UpdateBrushPreview();
-        DebugLogEraserTileReadIfDue();
 
         EnsureGridResources();
         if (_gridMeshRenderer == null)
@@ -430,43 +419,6 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
         _brushPreviewRenderer.material = _brushPreviewMaterial;
     }
 
-    void DebugLogEraserTileReadIfDue()
-    {
-        if (!debugEraserTileReadEverySecond)
-            return;
-
-        if (!IsEditMode || !eraserModeEnabled || palette == null || groundTilemap == null || objectsTilemap == null)
-            return;
-
-        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
-            return;
-
-        var cam = worldCamera != null ? worldCamera : Camera.main;
-        if (cam == null || !TryScreenToCell(cam, groundTilemap, Input.mousePosition, out var cell))
-            return;
-
-        var now = Time.unscaledTime;
-        if (now < _nextEraserDebugLogUnscaledTime)
-            return;
-        _nextEraserDebugLogUnscaledTime = now + 1f;
-
-        var gHas = groundTilemap.HasTile(cell);
-        var oHas = objectsTilemap.HasTile(cell);
-        var layer = palette.DisplayedLayer;
-        var sourceTm = layer == TilePaletteLayer.Ground ? groundTilemap : objectsTilemap;
-        var hasOnLayer = sourceTm != null && sourceTm.HasTile(cell);
-        var tileBase = sourceTm != null ? sourceTm.GetTile(cell) : null;
-        var tileType = tileBase != null ? tileBase.GetType().Name : "null";
-        Sprite sp = null;
-        var spriteOk = sourceTm != null && TryGetSpriteAtCell(sourceTm, cell, out sp) && sp != null;
-        var spriteName = sp != null ? sp.name : "null";
-
-        Debug.Log(
-            $"[EraserTileDebug] cell=({cell.x},{cell.y},{cell.z}) displayedLayer={layer} " +
-            $"ground.HasTile={gHas} objects.HasTile={oHas} layerHasTile={hasOnLayer} " +
-            $"GetTileType={tileType} TryGetSpriteAtCell={spriteOk} sprite={spriteName}");
-    }
-
     void UpdateBrushPreview()
     {
         EnsureBrushPreviewResources();
@@ -515,21 +467,19 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
                 return;
             }
 
-            var hasRealSprite = TryGetSpriteAtCell(sourceTm, cell, out var sp) && sp != null;
-            if (!hasRealSprite)
-                sp = ErasePreviewPlaceholderSprite;
+            if (!TryGetSpriteAtCell(sourceTm, cell, out var sp) || sp == null)
+            {
+                SetBrushPreviewVisible(false);
+                return;
+            }
 
-            // 与绘制预览共用 Layout：绘制用的是「笔刷瓦片图」，和格内往往不同，白半透明就清楚；
-            // 橡皮用的是「格内同一张图」，若再用 (1,1,1,α) 叠在同格同图上，肉眼几乎等于没叠一层。
-            var tint = hasRealSprite
-                ? new Color(
-                    eraserHoverMultiplyOnTile.r,
-                    eraserHoverMultiplyOnTile.g,
-                    eraserHoverMultiplyOnTile.b,
-                    eraserHoverPreviewAlpha)
-                : new Color(1f, 0.88f, 0.25f, Mathf.Max(eraserHoverPreviewAlpha, 0.35f));
+            var tint = new Color(
+                eraserHoverMultiplyOnTile.r,
+                eraserHoverMultiplyOnTile.g,
+                eraserHoverMultiplyOnTile.b,
+                eraserHoverPreviewAlpha);
 
-            LayoutBrushPreviewAtCell(cell, sp, tint, cam, sourceTm, eraserHoverExtraCameraForward);
+            LayoutBrushPreviewAtCell(cell, sp, tint, cam, sourceTm);
             return;
         }
 
@@ -553,38 +503,10 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
             return;
         }
 
-        LayoutBrushPreviewAtCell(cell, sprite, new Color(1f, 1f, 1f, brushPreviewAlpha), cam, groundTilemap, 0f);
+        LayoutBrushPreviewAtCell(cell, sprite, new Color(1f, 1f, 1f, brushPreviewAlpha), cam, groundTilemap);
     }
 
-    static Sprite _erasePreviewPlaceholder;
-
-    static Sprite ErasePreviewPlaceholderSprite
-    {
-        get
-        {
-            if (_erasePreviewPlaceholder != null)
-                return _erasePreviewPlaceholder;
-
-            var tex = Texture2D.whiteTexture;
-            _erasePreviewPlaceholder = Sprite.Create(
-                tex,
-                new Rect(0f, 0f, tex.width, tex.height),
-                new Vector2(0.5f, 0.5f),
-                100f,
-                0,
-                SpriteMeshType.FullRect);
-            _erasePreviewPlaceholder.name = "ErasePreviewPlaceholder";
-            return _erasePreviewPlaceholder;
-        }
-    }
-
-    void LayoutBrushPreviewAtCell(
-        Vector3Int cell,
-        Sprite sprite,
-        Color tint,
-        Camera cam,
-        Tilemap sortingReferenceTilemap,
-        float extraCameraForwardPull = 0f)
+    void LayoutBrushPreviewAtCell(Vector3Int cell, Sprite sprite, Color tint, Camera cam, Tilemap sortingReferenceTilemap)
     {
         var grid = groundTilemap.layoutGrid;
         if (grid == null)
@@ -598,7 +520,7 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
 
         var centerWorld = (ll + ur) * 0.5f;
         if (cam != null && tint.a < 0.999f)
-            centerWorld -= cam.transform.forward * (0.03f + extraCameraForwardPull);
+            centerWorld -= cam.transform.forward * 0.03f;
 
         var cellW = (lr - ll).magnitude;
         var cellH = (ul - ll).magnitude;
@@ -647,18 +569,13 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
         SetBrushPreviewVisible(true);
     }
 
-    /// <summary> 取 Tilemap 在该格实际参与渲染的 Sprite（含 RuleTile 等）；失败再退回 <see cref="Tile"/> 字段。 </summary>
+    /// <summary> 取 Tilemap 在该格用于预览的 Sprite；失败则退回 <see cref="Tile"/> 的 sprite。 </summary>
     static bool TryGetSpriteAtCell(Tilemap map, Vector3Int cell, out Sprite sprite)
     {
         sprite = null;
         if (map == null)
             return false;
 
-        sprite = map.GetSprite(cell);
-        if (sprite != null)
-            return true;
-
-        map.RefreshTile(cell);
         sprite = map.GetSprite(cell);
         if (sprite != null)
             return true;
