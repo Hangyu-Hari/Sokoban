@@ -1469,7 +1469,7 @@ GameObject:
   - component: {fileID: 406839163}
   - component: {fileID: 406839164}
   m_Layer: 0
-  m_Name: TilePaletteController
+  m_Name: Tilemap Painter
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1502,7 +1502,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 88699dd8d184b8841ade5f2f6a86c9a9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  palette: {fileID: 0}
+  palette: {fileID: 2009720616}
   groundTilemap: {fileID: 222350900}
   objectsTilemap: {fileID: 1647714699}
   worldCamera: {fileID: 1918907315}
