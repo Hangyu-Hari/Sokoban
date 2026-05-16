@@ -23,6 +23,9 @@ public sealed class GameSceneManager : MonoBehaviour
     [Tooltip("当前场景名末尾解析出关卡号 N 后，下一关场景名为 string.Format(本格式, N+1)。需与关卡 .unity 文件名一致，例如 Level {0}。")]
     [SerializeField] string nextLevelSceneNameFormat = "Level {0}";
 
+    [Tooltip("最后一关：没有下一关场景时（未加入 Build 或不存在），加载的主菜单场景名，需与 Build Settings 一致。")]
+    [SerializeField] string mainMenuSceneName = "Start";
+
     [Header("存档 / 调试")]
     [Tooltip("勾选后，游戏开局（本对象 Awake）时清除 PlayerPrefs 里的最高解锁关卡，恢复为默认仅第 1 关。发行版请取消勾选。")]
     [SerializeField] bool resetMaxUnlockedLevelOnGameStart;
@@ -223,8 +226,19 @@ public sealed class GameSceneManager : MonoBehaviour
         var nextSceneName = string.Format(nextLevelSceneNameFormat.Trim(), levelNumber + 1);
         if (!Application.CanStreamedLevelBeLoaded(nextSceneName))
         {
+            var menuName = string.IsNullOrWhiteSpace(mainMenuSceneName) ? null : mainMenuSceneName.Trim();
+            if (menuName != null && Application.CanStreamedLevelBeLoaded(menuName))
+            {
+                SceneMgr.LoadScene(menuName, LoadMode.Single);
+                ApplyMainCameraBackground();
+                return;
+            }
+
             Debug.LogWarning(
-                $"[GameSceneManager] 没有下一关或场景未加入 Build Settings：无法加载「{nextSceneName}」。",
+                $"[GameSceneManager] 没有下一关或场景未加入 Build Settings：无法加载「{nextSceneName}」；" +
+                (menuName != null && !Application.CanStreamedLevelBeLoaded(menuName)
+                    ? $"主菜单「{menuName}」亦不可加载，请检查 Build Settings。"
+                    : "且未配置可加载的主菜单场景。"),
                 this);
             return;
         }
