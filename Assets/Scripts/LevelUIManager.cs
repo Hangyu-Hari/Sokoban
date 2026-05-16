@@ -1,7 +1,10 @@
+using System;
 using UnityEngine;
+using UnitySceneManagement = UnityEngine.SceneManagement;
 
 /// <summary>
 /// 挂在关卡内 UI 根物体上：DontDestroyOnLoad。
+/// 关卡完成界面显示时，在非编辑器场景可按 Enter（主键盘或数字区）跳转下一关，与「下一关」按钮一致。
 /// </summary>
 [DisallowMultipleComponent]
 [RequireComponent(typeof(RectTransform))]
@@ -56,6 +59,32 @@ public sealed class LevelUIManager : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.Escape))
             HandleEscapeForPause();
+
+        TryProceedToNextLevelOnEnterAfterWin();
+    }
+
+    /// <summary> 编辑器场景不参与「完成关 → Enter 下一关」快捷方式（与 HUD 在非关卡场景的隐藏约定一致）。 </summary>
+    static bool IsExcludedEditorGameplayScene(string sceneName)
+    {
+        return !string.IsNullOrEmpty(sceneName) &&
+               sceneName.IndexOf("Editor", StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    void TryProceedToNextLevelOnEnterAfterWin()
+    {
+        if (levelCompleteUI == null || !levelCompleteUI.activeInHierarchy)
+            return;
+
+        var active = UnitySceneManagement.SceneManager.GetActiveScene();
+        if (!active.IsValid())
+            return;
+        if (IsExcludedEditorGameplayScene(active.name ?? string.Empty))
+            return;
+
+        if (!Input.GetKeyDown(KeyCode.Return) && !Input.GetKeyDown(KeyCode.KeypadEnter))
+            return;
+
+        GameSceneManager.Instance?.LoadNextScene();
     }
 
     void HandleEscapeForPause()
