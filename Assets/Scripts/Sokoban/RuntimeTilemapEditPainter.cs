@@ -11,7 +11,7 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Runtime：编辑模式（F1）下，工具为「光标 / 绘制 / 橡皮」三选一；Ctrl+S 见保存逻辑；<see cref="SaveCurrentLevelToFile"/> / <see cref="SaveLevelAs"/> / <see cref="OpenLevelFromFileDialog"/> 供 UI；光标拖曳平移；Ctrl+滚轮缩放；可限制在编辑网格内；绘制或橡皮时左键改 Tilemap。无打开文件时标题为 <c>Unsaved</c> 且开局即视为未落盘（带 <c>*</c>）；有关联文件后，未写入磁盘的改动也会在 <see cref="LevelDocumentTitleText"/> 上加 <c>*</c>。
-/// <see cref="StartPlaytestFromCurrentTilemaps"/> 进入 <see cref="IsPlaytestMode"/>：此时不能改图，直至 <see cref="ExitPlaytestToEditMode"/> 或再按 F1（与退出测试相同）。
+/// <see cref="StartPlaytestFromCurrentTilemaps"/> 会先拍编辑网格内瓦片快照，<see cref="ExitPlaytestToEditMode"/> 写回后再 <c>Refresh</c>；与是否保存 JSON 无关。
 /// 编辑网格从格坐标 (0,0,0) 起，仅配置宽高格数；开局将相机对准该网格世界中心（见 <see cref="centerCameraOnEditGridAtStart"/>）。
 /// </summary>
 [DisallowMultipleComponent]
@@ -169,6 +169,12 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     bool _levelDocumentDirty;
     string _lastPublishedLevelDocumentTitle;
 
+    /// <summary> 点击「开始测试」前在 <see cref="FixedEditGridCellBounds"/> 内拍的瓦片快照；退出测试时写回（与 <c>GetTilesBlock</c> 相同的一维布局）。 </summary>
+    BoundsInt _playtestSnapshotBounds;
+    TileBase[] _playtestSnapshotGround;
+    TileBase[] _playtestSnapshotObjects;
+    bool _hasPlaytestTileSnapshot;
+
     const string NoOpenFileDisplayName = "Unsaved";
 
     /// <summary> 供 UI 显示：当前是否已有「保存目标」文件路径。 </summary>
@@ -192,6 +198,59 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
             var h = Mathf.Max(1, fixedEditGridCellCount.y);
             return new BoundsInt(0, 0, 0, w, h, 1);
         }
+    }
+
+    void ClearPlaytestTileSnapshot()
+    {
+        _playtestSnapshotGround = null;
+        _playtestSnapshotObjects = null;
+        _hasPlaytestTileSnapshot = false;
+    }
+
+    static TileBase[] CloneTilesBlock(Tilemap tm, BoundsInt bounds)
+    {
+        if (tm == null)
+            return null;
+
+        var src = tm.GetTilesBlock(bounds);
+        if (src == null || src.Length == 0)
+            return null;
+
+        var dst = new TileBase[src.Length];
+        Array.Copy(src, dst, src.Length);
+        return dst;
+    }
+
+    void CapturePlaytestTileSnapshot()
+    {
+        ClearPlaytestTileSnapshot();
+        if (groundTilemap == null || objectsTilemap == null)
+            return;
+
+        var b = FixedEditGridCellBounds;
+        if (b.size.x <= 0 || b.size.y <= 0 || b.size.z <= 0)
+            return;
+
+        _playtestSnapshotGround = CloneTilesBlock(groundTilemap, b);
+        _playtestSnapshotObjects = CloneTilesBlock(objectsTilemap, b);
+        if (_playtestSnapshotGround == null || _playtestSnapshotObjects == null)
+        {
+            ClearPlaytestTileSnapshot();
+            return;
+        }
+
+        _playtestSnapshotBounds = b;
+        _hasPlaytestTileSnapshot = true;
+    }
+
+    void RestorePlaytestTileSnapshot()
+    {
+        if (!_hasPlaytestTileSnapshot || groundTilemap == null || objectsTilemap == null)
+            return;
+
+        groundTilemap.SetTilesBlock(_playtestSnapshotBounds, _playtestSnapshotGround);
+        objectsTilemap.SetTilesBlock(_playtestSnapshotBounds, _playtestSnapshotObjects);
+        ClearPlaytestTileSnapshot();
     }
 
     string BuildLevelDocumentTitleText()
@@ -309,6 +368,8 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     void OnDestroy()
     {
         UnwireToolModeButtons();
+
+        ClearPlaytestTileSnapshot();
 
         if (IsEditMode)
             IsEditMode = false;
@@ -639,12 +700,18 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     }
 
     /// <summary>
-    /// 退出「开始测试」状态，回到可编辑（F1 编辑模式开启），并关闭胜利/暂停界面。
+    /// 退出「开始测试」：先把编辑网格内瓦片恢复为点击「开始测试」前的快照，再刷新关卡逻辑，回到可编辑（F1 开启），并关闭胜利/暂停界面。
     /// </summary>
     public void ExitPlaytestToEditMode()
     {
         if (!IsPlaytestMode)
             return;
+
+        RestorePlaytestTileSnapshot();
+
+        if (tilemapSettings == null)
+            tilemapSettings = FindFirstObjectByType<TilemapSettings>();
+        tilemapSettings?.RefreshFromTilemaps(applyCameraDuringEditMode: false);
 
         SetPlaytestMode(false);
         IsEditMode = true;
@@ -661,8 +728,8 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     }
 
     /// <summary>
-    /// 供 UI「开始测试」：按当前 Tilemap 状态重新载入关卡逻辑并进入游玩（退出 F1 编辑）；进入 <see cref="IsPlaytestMode"/>，期间不能改图直至 <see cref="ExitPlaytestToEditMode"/> 或 F1。
-    /// 会关闭胜利与暂停界面。解析失败时不进入测试状态；具体原因由 <see cref="TilemapSettings.RefreshFromTilemaps"/> 打日志。
+    /// 供 UI「开始测试」：在 <see cref="FixedEditGridCellBounds"/> 内拍下当前瓦片快照后，按 Tilemap 进入游玩（<see cref="IsPlaytestMode"/>）。
+    /// 退出测试时快照会写回，与是否保存 JSON 无关。解析失败时不进入测试并丢弃快照。
     /// </summary>
     public void StartPlaytestFromCurrentTilemaps()
     {
@@ -675,8 +742,18 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
             return;
         }
 
-        if (!tilemapSettings.RefreshFromTilemaps(applyCameraDuringEditMode: true))
+        CapturePlaytestTileSnapshot();
+        if (!_hasPlaytestTileSnapshot)
+        {
+            Debug.LogWarning("[Sokoban] 无法拍下测试前瓦片快照（请检查 Ground/Objects Tilemap 是否已赋值）。", this);
             return;
+        }
+
+        if (!tilemapSettings.RefreshFromTilemaps(applyCameraDuringEditMode: true))
+        {
+            ClearPlaytestTileSnapshot();
+            return;
+        }
 
         SetPlaytestMode(true);
         IsEditMode = false;

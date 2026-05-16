@@ -911,7 +911,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &219730930
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1313,7 +1313,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 174.1, y: -30}
+  m_AnchoredPosition: {x: 87.05, y: -30}
   m_SizeDelta: {x: 60, y: 60}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &247679398
@@ -5209,9 +5209,9 @@ RectTransform:
   - {fileID: 1977079409}
   m_Father: {fileID: 1754337625}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 174.1, y: -30}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 60, y: 60}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &845172138
@@ -6127,9 +6127,9 @@ RectTransform:
   - {fileID: 405804918}
   m_Father: {fileID: 1754337625}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 290.16666, y: -29.999998}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 60, y: 59.999996}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1113396021
@@ -9509,7 +9509,13 @@ MonoBehaviour:
   saveLevelButton: {fileID: 683096975}
   saveLevelAsButton: {fileID: 1031247059}
   startPlaytestButton: {fileID: 1850759501}
+  startPlaytestButtonLabelTmp: {fileID: 1010022450}
   tilemapEditPainter: {fileID: 406839164}
+  playtestStartLabel: "\u5F00\u59CB\u6D4B\u8BD5"
+  playtestExitLabel: "\u9000\u51FA\u6D4B\u8BD5"
+  playtestExitNormalColor: {r: 0.92, g: 0.32, b: 0.32, a: 1}
+  playtestExitHighlightedColor: {r: 1, g: 0.45, b: 0.45, a: 1}
+  playtestExitPressedColor: {r: 0.72, g: 0.22, b: 0.22, a: 1}
   showX: 95.7
   hideX: -260.44
   expandedOnStart: 1
@@ -9862,7 +9868,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1624112371
 RectTransform:
   m_ObjectHideFlags: 0
@@ -10530,7 +10536,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1794844955
 RectTransform:
   m_ObjectHideFlags: 0
@@ -11779,7 +11785,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 290.16666, y: -29.999998}
+  m_AnchoredPosition: {x: 261.15002, y: -29.999998}
   m_SizeDelta: {x: 60, y: 59.999996}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1961682113
@@ -12346,10 +12352,10 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: GameSceneManager, Assembly-CSharp
-        m_MethodName: LoadNextScene
-        m_Mode: 1
+      - m_Target: {fileID: 219730929}
+        m_TargetAssemblyTypeName: UnityEngine.GameObject, UnityEngine
+        m_MethodName: SetActive
+        m_Mode: 6
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
