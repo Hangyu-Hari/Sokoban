@@ -759,6 +759,42 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
         RefreshToolModeButtonVisuals();
     }
 
+    /// <summary> 能否开始测试；<paramref name="userMessage"/> 为面向玩家的简短说明（中文）。 </summary>
+    public bool TryGetPlaytestStartUserMessage(out string userMessage)
+    {
+        userMessage = null;
+
+        if (groundTilemap == null || objectsTilemap == null)
+        {
+            userMessage = "地图层未配置";
+            return false;
+        }
+
+        if (tilemapSettings == null)
+            tilemapSettings = FindFirstObjectByType<TilemapSettings>();
+
+        if (tilemapSettings == null)
+        {
+            userMessage = "关卡组件未就绪";
+            return false;
+        }
+
+        if (!tilemapSettings.TryValidateLevelForPlaytest(out var technicalError))
+        {
+            userMessage = PlaytestStartUserMessages.FromTechnicalError(technicalError);
+            return false;
+        }
+
+        var b = FixedEditGridCellBounds;
+        if (b.size.x <= 0 || b.size.y <= 0)
+        {
+            userMessage = "编辑网格无效";
+            return false;
+        }
+
+        return true;
+    }
+
     /// <summary>
     /// 供 UI「开始测试」：在 <see cref="FixedEditGridCellBounds"/> 内拍下当前瓦片快照后，按 Tilemap 进入游玩（<see cref="IsPlaytestMode"/>）。
     /// 退出测试时快照会写回，与是否保存 JSON 无关。解析失败时不进入测试并丢弃快照。
@@ -784,6 +820,7 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
         if (!tilemapSettings.RefreshFromTilemaps(applyCameraDuringEditMode: true))
         {
             ClearPlaytestTileSnapshot();
+            Debug.LogWarning("[Sokoban] 无法开始测试：当前地图不满足游玩条件（见上一条警告）。", this);
             return;
         }
 

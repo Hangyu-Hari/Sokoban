@@ -52,9 +52,15 @@ public sealed class EditorSettings : MonoBehaviour
     [Header("开始测试 / 退出测试 外观")]
     [SerializeField] string playtestStartLabel = "开始测试";
     [SerializeField] string playtestExitLabel = "退出测试";
+    [Tooltip("测试状态提示：默认 / 测试中 / 无法测试时的简短说明。")]
+    [SerializeField] TextMeshProUGUI playtestStatusLabelTmp;
     [SerializeField] Color playtestExitNormalColor = new(0.92f, 0.32f, 0.32f, 1f);
     [SerializeField] Color playtestExitHighlightedColor = new(1f, 0.45f, 0.45f, 1f);
     [SerializeField] Color playtestExitPressedColor = new(0.72f, 0.22f, 0.22f, 1f);
+
+    static readonly Color PlaytestStatusColorDefault = new(0f, 0f, 0f, 96f / 255f);
+    static readonly Color PlaytestStatusColorError = new(0xE5 / 255f, 0x4C / 255f, 0x4C / 255f, 1f);
+    static readonly Color PlaytestStatusColorTesting = new(0x3A / 255f, 0xB3 / 255f, 0x32 / 255f, 1f);
 
     [Header("面板 anchoredPosition.x")]
     [SerializeField] float showX;
@@ -80,6 +86,7 @@ public sealed class EditorSettings : MonoBehaviour
         var inPlaytest = RuntimeTilemapEditPainter.IsPlaytestMode;
         ApplyPlaytestButtonVisual(inPlaytest);
         ApplyLevelUiManagerActive(inPlaytest);
+        RefreshPlaytestStatusLabel(inPlaytest);
     }
 
     void OnDisable()
@@ -100,7 +107,7 @@ public sealed class EditorSettings : MonoBehaviour
             saveLevelButton.onClick.AddListener(OnSaveLevelClicked);
         if (saveLevelAsButton != null && tilemapEditPainter != null)
             saveLevelAsButton.onClick.AddListener(OnSaveLevelAsClicked);
-        if (startPlaytestButton != null && tilemapEditPainter != null)
+        if (startPlaytestButton != null)
             startPlaytestButton.onClick.AddListener(OnStartPlaytestToggleClicked);
         if (returnToMainMenuButton != null)
             returnToMainMenuButton.onClick.AddListener(OnReturnToMainMenuClicked);
@@ -115,17 +122,40 @@ public sealed class EditorSettings : MonoBehaviour
     {
         ApplyPlaytestButtonVisual(inPlaytest);
         ApplyLevelUiManagerActive(inPlaytest);
+        RefreshPlaytestStatusLabel(inPlaytest);
     }
 
     void OnStartPlaytestToggleClicked()
     {
         if (tilemapEditPainter == null)
+        {
+            Debug.LogWarning("[EditorSettings] 未在 Inspector 指定 Runtime Tilemap Edit Painter，无法开始/退出测试。", this);
+            SetPlaytestStatusError("编辑器未连接");
             return;
+        }
 
         if (RuntimeTilemapEditPainter.IsPlaytestMode)
+        {
             tilemapEditPainter.ExitPlaytestToEditMode();
-        else
-            tilemapEditPainter.StartPlaytestFromCurrentTilemaps();
+            ApplyPlaytestButtonVisual(false);
+            SetPlaytestStatusDefault();
+            return;
+        }
+
+        if (!tilemapEditPainter.TryGetPlaytestStartUserMessage(out var blockMessage))
+        {
+            SetPlaytestStatusError(blockMessage);
+            ApplyPlaytestButtonVisual(false);
+            return;
+        }
+
+        var wasPlaytest = RuntimeTilemapEditPainter.IsPlaytestMode;
+        tilemapEditPainter.StartPlaytestFromCurrentTilemaps();
+
+        if (RuntimeTilemapEditPainter.IsPlaytestMode)
+            SetPlaytestStatusTesting();
+        else if (!wasPlaytest)
+            SetPlaytestStatusError(PlaytestStartUserMessages.SnapshotFailed);
 
         ApplyPlaytestButtonVisual(RuntimeTilemapEditPainter.IsPlaytestMode);
     }
@@ -240,9 +270,37 @@ public sealed class EditorSettings : MonoBehaviour
         }
     }
 
+    void SetPlaytestStatusLabel(string text, Color color)
+    {
+        if (playtestStatusLabelTmp == null)
+            return;
+        playtestStatusLabelTmp.text = text;
+        playtestStatusLabelTmp.color = color;
+    }
+
+    void SetPlaytestStatusDefault() =>
+        SetPlaytestStatusLabel(PlaytestStartUserMessages.DefaultHint, PlaytestStatusColorDefault);
+
+    void SetPlaytestStatusTesting() =>
+        SetPlaytestStatusLabel(PlaytestStartUserMessages.TestingHint, PlaytestStatusColorTesting);
+
+    void SetPlaytestStatusError(string message) =>
+        SetPlaytestStatusLabel(
+            string.IsNullOrWhiteSpace(message) ? PlaytestStartUserMessages.StartFailed : message.Trim(),
+            PlaytestStatusColorError);
+
+    void RefreshPlaytestStatusLabel(bool inPlaytest)
+    {
+        if (inPlaytest)
+            SetPlaytestStatusTesting();
+        else
+            SetPlaytestStatusDefault();
+    }
+
     void Start()
     {
         HideUnsavedChangesDialog();
+        RefreshPlaytestStatusLabel(RuntimeTilemapEditPainter.IsPlaytestMode);
         EnsureLevelUiManagerDefaultHidden();
         EnsureToggleButtonLabelTmp();
         EnsurePlaytestButtonLabelTmp();
@@ -268,7 +326,7 @@ public sealed class EditorSettings : MonoBehaviour
             saveLevelButton.onClick.RemoveListener(OnSaveLevelClicked);
         if (saveLevelAsButton != null)
             saveLevelAsButton.onClick.RemoveListener(OnSaveLevelAsClicked);
-        if (startPlaytestButton != null && tilemapEditPainter != null)
+        if (startPlaytestButton != null)
             startPlaytestButton.onClick.RemoveListener(OnStartPlaytestToggleClicked);
         if (returnToMainMenuButton != null)
             returnToMainMenuButton.onClick.RemoveListener(OnReturnToMainMenuClicked);

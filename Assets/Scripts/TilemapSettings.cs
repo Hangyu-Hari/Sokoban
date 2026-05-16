@@ -37,6 +37,43 @@ public sealed class TilemapSettings : MonoBehaviour
     public bool RefreshFromTilemaps(bool applyCameraDuringEditMode = false) =>
         TryBootstrapLevel(applyCameraDuringEditMode);
 
+    /// <summary> 仅校验当前 Tilemap 能否进入游玩，不修改盘面或相机。 </summary>
+    public bool TryValidateLevelForPlaytest(out string technicalError)
+    {
+        technicalError = null;
+        var assets = Assets;
+        if (assets == null)
+        {
+            technicalError = "TileAssetSettings missing.";
+            return false;
+        }
+
+        if (groundTilemap == null || objectsTilemap == null)
+        {
+            technicalError = "Ground or Objects Tilemap is not assigned.";
+            return false;
+        }
+
+        if (assets.GoalCompletedTile == null)
+        {
+            technicalError = "GoalCompletedTile missing.";
+            return false;
+        }
+
+        return SokobanRuntimeState.TryFromTilemaps(
+            groundTilemap,
+            objectsTilemap,
+            assets.WallBaseTiles,
+            assets.WallCapTile,
+            assets.FloorTiles,
+            assets.GoalUncompletedTile,
+            assets.GoalCompletedTile,
+            assets.PlayerTile,
+            assets.BoxTile,
+            out _,
+            out technicalError);
+    }
+
     bool TryBootstrapLevel(bool applyCameraDuringEditMode)
     {
         var assets = Assets;
@@ -77,9 +114,9 @@ public sealed class TilemapSettings : MonoBehaviour
                 out _state,
                 out var err))
         {
-            // 编辑模式下地图常处于「未放齐玩家」等半成品状态；落笔也会反复 Refresh，不应刷屏报错。
-            if (!RuntimeTilemapEditPainter.IsEditMode)
-                Debug.LogError("[Sokoban] " + err, this);
+            // 编辑中落笔会反复 Refresh，半成品地图不刷屏；开始测试等显式操作（applyCameraDuringEditMode）要给出原因。
+            if (!RuntimeTilemapEditPainter.IsEditMode || applyCameraDuringEditMode)
+                Debug.LogWarning("[Sokoban] " + err, this);
             _state = null;
             return false;
         }
