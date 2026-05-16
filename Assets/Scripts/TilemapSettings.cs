@@ -209,6 +209,8 @@ public sealed class TilemapSettings : MonoBehaviour
         if (!_state.TryMove(d))
             return;
 
+        AudioManager.PlayOneShot("pop_up", AudioManager.AudioGroup.SFX);
+
         SyncTilemapsFromState(assets);
 
         if (_state.IsWin() && !_winCompleteUiShown)
