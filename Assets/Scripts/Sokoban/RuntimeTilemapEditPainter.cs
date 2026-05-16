@@ -11,6 +11,7 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Runtime：编辑模式（F1）下，工具为「光标 / 绘制 / 橡皮」三选一；Ctrl+S 见保存逻辑；<see cref="SaveCurrentLevelToFile"/> / <see cref="SaveLevelAs"/> / <see cref="OpenLevelFromFileDialog"/> 供 UI；光标拖曳平移；Ctrl+滚轮缩放；可限制在编辑网格内；绘制或橡皮时左键改 Tilemap。无打开文件时标题为 <c>Unsaved</c> 且开局即视为未落盘（带 <c>*</c>）；有关联文件后，未写入磁盘的改动也会在 <see cref="LevelDocumentTitleText"/> 上加 <c>*</c>。
+/// <see cref="StartPlaytestFromCurrentTilemaps"/> 进入 <see cref="IsPlaytestMode"/>：此时不能改图，直至 <see cref="ExitPlaytestToEditMode"/> 或再按 F1（与退出测试相同）。
 /// 编辑网格从格坐标 (0,0,0) 起，仅配置宽高格数；开局将相机对准该网格世界中心（见 <see cref="centerCameraOnEditGridAtStart"/>）。
 /// </summary>
 [DisallowMultipleComponent]
@@ -18,6 +19,20 @@ using UnityEngine.UI;
 public sealed class RuntimeTilemapEditPainter : MonoBehaviour
 {
     public static bool IsEditMode { get; private set; }
+
+    /// <summary> 由 <see cref="StartPlaytestFromCurrentTilemaps"/> / <see cref="ExitPlaytestToEditMode"/> 更新；供 UI 同步「开始测试 / 退出测试」外观。 </summary>
+    public static event Action<bool> PlaytestModeChanged;
+
+    /// <summary> 由 <see cref="StartPlaytestFromCurrentTilemaps"/> 置 true；为 true 时禁止一切地图编辑 UI/快捷键，直至 <see cref="ExitPlaytestToEditMode"/>（或 F1）。 </summary>
+    public static bool IsPlaytestMode { get; private set; }
+
+    static void SetPlaytestMode(bool value)
+    {
+        if (IsPlaytestMode == value)
+            return;
+        IsPlaytestMode = value;
+        PlaytestModeChanged?.Invoke(value);
+    }
 
     /// <summary> 编辑地图时鼠标工具模式（默认 <see cref="RuntimeTilemapEditToolMode.Cursor"/>）。 </summary>
     public enum RuntimeTilemapEditToolMode
@@ -114,6 +129,8 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     /// <summary> 三选一设置工具。 </summary>
     public void SetToolMode(RuntimeTilemapEditToolMode mode)
     {
+        if (IsPlaytestMode)
+            return;
         drawModeEnabled = mode == RuntimeTilemapEditToolMode.Draw;
         eraserModeEnabled = mode == RuntimeTilemapEditToolMode.Eraser;
         RefreshToolModeButtonVisuals();
@@ -295,6 +312,8 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
 
         if (IsEditMode)
             IsEditMode = false;
+        if (IsPlaytestMode)
+            SetPlaytestMode(false);
 
         if (_gridMaterial != null)
             Destroy(_gridMaterial);
@@ -473,7 +492,12 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     void Update()
     {
         if (Input.GetKeyDown(toggleEditModeKey))
-            IsEditMode = !IsEditMode;
+        {
+            if (IsPlaytestMode)
+                ExitPlaytestToEditMode();
+            else
+                IsEditMode = !IsEditMode;
+        }
 
         if (IsEditMode)
             TrySaveEditLevelIfHotkey();
@@ -541,6 +565,9 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     /// <summary> 供 UI「保存」：写入当前已关联的 JSON 文件；若无路径请先「另存为」或 Ctrl+S 首次保存。 </summary>
     public void SaveCurrentLevelToFile()
     {
+        if (IsPlaytestMode)
+            return;
+
         if (!IsEditMode)
         {
             Debug.LogWarning("[Sokoban] 请先按 F1 进入编辑模式后再保存。", this);
@@ -562,6 +589,9 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     /// <summary> 供 UI「另存为」：始终弹出保存对话框，成功后切换为当前保存路径。 </summary>
     public void SaveLevelAs()
     {
+        if (IsPlaytestMode)
+            return;
+
         if (!IsEditMode)
         {
             Debug.LogWarning("[Sokoban] 请先按 F1 进入编辑模式后再另存为。", this);
@@ -609,8 +639,30 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     }
 
     /// <summary>
-    /// 供 UI「开始测试」：按当前 Tilemap 状态重新载入关卡逻辑并进入游玩（退出编辑模式）；
-    /// 会关闭胜利与暂停界面。解析失败时不退出编辑模式；具体原因由 <see cref="TilemapSettings.RefreshFromTilemaps"/> 打日志。
+    /// 退出「开始测试」状态，回到可编辑（F1 编辑模式开启），并关闭胜利/暂停界面。
+    /// </summary>
+    public void ExitPlaytestToEditMode()
+    {
+        if (!IsPlaytestMode)
+            return;
+
+        SetPlaytestMode(false);
+        IsEditMode = true;
+        _cursorPanDragging = false;
+
+        var ui = LevelUIManager.Instance;
+        if (ui != null)
+        {
+            ui.HideLevelCompleteUI();
+            ui.HidePauseUI();
+        }
+
+        RefreshToolModeButtonVisuals();
+    }
+
+    /// <summary>
+    /// 供 UI「开始测试」：按当前 Tilemap 状态重新载入关卡逻辑并进入游玩（退出 F1 编辑）；进入 <see cref="IsPlaytestMode"/>，期间不能改图直至 <see cref="ExitPlaytestToEditMode"/> 或 F1。
+    /// 会关闭胜利与暂停界面。解析失败时不进入测试状态；具体原因由 <see cref="TilemapSettings.RefreshFromTilemaps"/> 打日志。
     /// </summary>
     public void StartPlaytestFromCurrentTilemaps()
     {
@@ -626,6 +678,7 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
         if (!tilemapSettings.RefreshFromTilemaps(applyCameraDuringEditMode: true))
             return;
 
+        SetPlaytestMode(true);
         IsEditMode = false;
         _cursorPanDragging = false;
         _lastGridBounds = default;
@@ -643,6 +696,9 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     /// <summary> 供 UI「打开关卡」按钮：从 JSON 读入当前编辑网格；需已在编辑模式（F1）。 </summary>
     public void OpenLevelFromFileDialog()
     {
+        if (IsPlaytestMode)
+            return;
+
         if (!IsEditMode)
         {
             Debug.LogWarning("[Sokoban] 请先按 F1 进入编辑模式后再打开关卡。", this);

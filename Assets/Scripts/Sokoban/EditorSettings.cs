@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using TMPro;
 using UnityEngine;
@@ -5,7 +6,7 @@ using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 /// <summary>
-/// 地图编辑器内设置 UI：展开/收起面板；打开、保存、另存为关卡；开始测试（委托 <see cref="RuntimeTilemapEditPainter"/>）。
+/// 地图编辑器内设置 UI：展开/收起面板；打开、保存、另存为关卡；开始测试按钮在测试中与「退出测试」切换（委托 <see cref="RuntimeTilemapEditPainter"/>）。
 /// 展开时按钮文案为 <c>&lt;&lt;</c>，收起时为 <c>&gt;&gt;</c>。
 /// </summary>
 [DisallowMultipleComponent]
@@ -29,9 +30,18 @@ public sealed class EditorSettings : MonoBehaviour
     [SerializeField] Button saveLevelButton;
     [Tooltip("另存为：始终弹出保存对话框。")]
     [SerializeField] Button saveLevelAsButton;
-    [Tooltip("开始测试：按当前 Tilemap 状态进入游玩（退出 F1 编辑）；并关闭胜利/暂停界面。")]
+    [Tooltip("未测试：进入测试；测试中：退出测试（文案与颜色会切换）。")]
     [SerializeField] Button startPlaytestButton;
+    [Tooltip("开始测试按钮上的 TMP；可不拖，自动在按钮子级查找。")]
+    [SerializeField] TextMeshProUGUI startPlaytestButtonLabelTmp;
     [SerializeField] RuntimeTilemapEditPainter tilemapEditPainter;
+
+    [Header("开始测试 / 退出测试 外观")]
+    [SerializeField] string playtestStartLabel = "开始测试";
+    [SerializeField] string playtestExitLabel = "退出测试";
+    [SerializeField] Color playtestExitNormalColor = new(0.92f, 0.32f, 0.32f, 1f);
+    [SerializeField] Color playtestExitHighlightedColor = new(1f, 0.45f, 0.45f, 1f);
+    [SerializeField] Color playtestExitPressedColor = new(0.72f, 0.22f, 0.22f, 1f);
 
     [Header("面板 anchoredPosition.x")]
     [SerializeField] float showX;
@@ -46,25 +56,77 @@ public sealed class EditorSettings : MonoBehaviour
 
     bool _expanded;
     Coroutine _transitionRoutine;
+    ColorBlock _cachedStartPlaytestButtonColors;
+    bool _cachedStartPlaytestButtonColorsStored;
+
+    void OnEnable()
+    {
+        RuntimeTilemapEditPainter.PlaytestModeChanged += OnPlaytestModeChanged;
+        CacheStartPlaytestButtonColorsIfNeeded();
+        ApplyPlaytestButtonVisual(RuntimeTilemapEditPainter.IsPlaytestMode);
+    }
+
+    void OnDisable()
+    {
+        RuntimeTilemapEditPainter.PlaytestModeChanged -= OnPlaytestModeChanged;
+    }
 
     void Awake()
     {
         EnsureToggleButtonLabelTmp();
+        EnsurePlaytestButtonLabelTmp();
         if (togglePanelButton != null)
             togglePanelButton.onClick.AddListener(OnTogglePanelClicked);
         if (openLevelButton != null && tilemapEditPainter != null)
-            openLevelButton.onClick.AddListener(tilemapEditPainter.OpenLevelFromFileDialog);
+            openLevelButton.onClick.AddListener(OnOpenLevelClicked);
         if (saveLevelButton != null && tilemapEditPainter != null)
-            saveLevelButton.onClick.AddListener(tilemapEditPainter.SaveCurrentLevelToFile);
+            saveLevelButton.onClick.AddListener(OnSaveLevelClicked);
         if (saveLevelAsButton != null && tilemapEditPainter != null)
-            saveLevelAsButton.onClick.AddListener(tilemapEditPainter.SaveLevelAs);
+            saveLevelAsButton.onClick.AddListener(OnSaveLevelAsClicked);
         if (startPlaytestButton != null && tilemapEditPainter != null)
-            startPlaytestButton.onClick.AddListener(tilemapEditPainter.StartPlaytestFromCurrentTilemaps);
+            startPlaytestButton.onClick.AddListener(OnStartPlaytestToggleClicked);
+    }
+
+    void OnPlaytestModeChanged(bool inPlaytest) => ApplyPlaytestButtonVisual(inPlaytest);
+
+    void OnStartPlaytestToggleClicked()
+    {
+        if (tilemapEditPainter == null)
+            return;
+
+        if (RuntimeTilemapEditPainter.IsPlaytestMode)
+            tilemapEditPainter.ExitPlaytestToEditMode();
+        else
+            tilemapEditPainter.StartPlaytestFromCurrentTilemaps();
+
+        ApplyPlaytestButtonVisual(RuntimeTilemapEditPainter.IsPlaytestMode);
+    }
+
+    void OnOpenLevelClicked()
+    {
+        if (RuntimeTilemapEditPainter.IsPlaytestMode || tilemapEditPainter == null)
+            return;
+        tilemapEditPainter.OpenLevelFromFileDialog();
+    }
+
+    void OnSaveLevelClicked()
+    {
+        if (RuntimeTilemapEditPainter.IsPlaytestMode || tilemapEditPainter == null)
+            return;
+        tilemapEditPainter.SaveCurrentLevelToFile();
+    }
+
+    void OnSaveLevelAsClicked()
+    {
+        if (RuntimeTilemapEditPainter.IsPlaytestMode || tilemapEditPainter == null)
+            return;
+        tilemapEditPainter.SaveLevelAs();
     }
 
     void Start()
     {
         EnsureToggleButtonLabelTmp();
+        EnsurePlaytestButtonLabelTmp();
         if (panelContent == null)
             return;
 
@@ -73,20 +135,54 @@ public sealed class EditorSettings : MonoBehaviour
         p.x = _expanded ? showX : hideX;
         panelContent.anchoredPosition = p;
         ApplyToggleButtonLabel();
+        CacheStartPlaytestButtonColorsIfNeeded();
+        ApplyPlaytestButtonVisual(RuntimeTilemapEditPainter.IsPlaytestMode);
     }
 
     void OnDestroy()
     {
         if (togglePanelButton != null)
             togglePanelButton.onClick.RemoveListener(OnTogglePanelClicked);
-        if (openLevelButton != null && tilemapEditPainter != null)
-            openLevelButton.onClick.RemoveListener(tilemapEditPainter.OpenLevelFromFileDialog);
-        if (saveLevelButton != null && tilemapEditPainter != null)
-            saveLevelButton.onClick.RemoveListener(tilemapEditPainter.SaveCurrentLevelToFile);
-        if (saveLevelAsButton != null && tilemapEditPainter != null)
-            saveLevelAsButton.onClick.RemoveListener(tilemapEditPainter.SaveLevelAs);
+        if (openLevelButton != null)
+            openLevelButton.onClick.RemoveListener(OnOpenLevelClicked);
+        if (saveLevelButton != null)
+            saveLevelButton.onClick.RemoveListener(OnSaveLevelClicked);
+        if (saveLevelAsButton != null)
+            saveLevelAsButton.onClick.RemoveListener(OnSaveLevelAsClicked);
         if (startPlaytestButton != null && tilemapEditPainter != null)
-            startPlaytestButton.onClick.RemoveListener(tilemapEditPainter.StartPlaytestFromCurrentTilemaps);
+            startPlaytestButton.onClick.RemoveListener(OnStartPlaytestToggleClicked);
+    }
+
+    void CacheStartPlaytestButtonColorsIfNeeded()
+    {
+        if (_cachedStartPlaytestButtonColorsStored || startPlaytestButton == null)
+            return;
+        _cachedStartPlaytestButtonColors = startPlaytestButton.colors;
+        _cachedStartPlaytestButtonColorsStored = true;
+    }
+
+    void ApplyPlaytestButtonVisual(bool inPlaytest)
+    {
+        EnsurePlaytestButtonLabelTmp();
+        if (startPlaytestButtonLabelTmp != null)
+            startPlaytestButtonLabelTmp.text = inPlaytest ? playtestExitLabel : playtestStartLabel;
+
+        if (startPlaytestButton == null)
+            return;
+
+        CacheStartPlaytestButtonColorsIfNeeded();
+
+        if (inPlaytest)
+        {
+            var c = startPlaytestButton.colors;
+            c.normalColor = playtestExitNormalColor;
+            c.highlightedColor = playtestExitHighlightedColor;
+            c.pressedColor = playtestExitPressedColor;
+            c.selectedColor = playtestExitNormalColor;
+            startPlaytestButton.colors = c;
+        }
+        else if (_cachedStartPlaytestButtonColorsStored)
+            startPlaytestButton.colors = _cachedStartPlaytestButtonColors;
     }
 
     void OnTogglePanelClicked()
@@ -138,5 +234,12 @@ public sealed class EditorSettings : MonoBehaviour
         if (toggleButtonLabelTmp != null || togglePanelButton == null)
             return;
         toggleButtonLabelTmp = togglePanelButton.GetComponentInChildren<TextMeshProUGUI>(true);
+    }
+
+    void EnsurePlaytestButtonLabelTmp()
+    {
+        if (startPlaytestButtonLabelTmp != null || startPlaytestButton == null)
+            return;
+        startPlaytestButtonLabelTmp = startPlaytestButton.GetComponentInChildren<TextMeshProUGUI>(true);
     }
 }

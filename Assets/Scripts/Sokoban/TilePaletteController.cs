@@ -168,6 +168,9 @@ public sealed class TilePaletteController : MonoBehaviour
 
     void OnPaletteSlideToggleClicked()
     {
+        if (RuntimeTilemapEditPainter.IsPlaytestMode)
+            return;
+
         if (paletteSlidePanel == null)
             return;
 
@@ -223,6 +226,9 @@ public sealed class TilePaletteController : MonoBehaviour
     /// <summary> 供 UI「背景」按钮：Content 只显示 Ground 层笔刷（默认）。 </summary>
     public void ShowGroundPalette()
     {
+        if (RuntimeTilemapEditPainter.IsPlaytestMode)
+            return;
+
         if (_displayedLayer == TilePaletteLayer.Ground)
             return;
 
@@ -234,6 +240,9 @@ public sealed class TilePaletteController : MonoBehaviour
     /// <summary> 供 UI「物体」按钮：Content 只显示 Objects 层笔刷。 </summary>
     public void ShowObjectsPalette()
     {
+        if (RuntimeTilemapEditPainter.IsPlaytestMode)
+            return;
+
         if (_displayedLayer == TilePaletteLayer.Objects)
             return;
 
@@ -247,6 +256,9 @@ public sealed class TilePaletteController : MonoBehaviour
 
     void RebuildPalette()
     {
+        if (RuntimeTilemapEditPainter.IsPlaytestMode)
+            return;
+
         if (content == null)
         {
             Debug.LogError("[TilePaletteController] Content 未赋值。", this);
@@ -344,6 +356,9 @@ public sealed class TilePaletteController : MonoBehaviour
 
     void SetCurrentBrush(TilePaletteBrush brush)
     {
+        if (RuntimeTilemapEditPainter.IsPlaytestMode)
+            return;
+
         _currentBrush = brush;
         RefreshPaletteTileEntryVisuals();
         BrushChanged?.Invoke(brush);
