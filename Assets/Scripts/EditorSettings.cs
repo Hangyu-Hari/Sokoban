@@ -7,7 +7,7 @@ using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 /// <summary>
-/// 地图编辑器内设置 UI：展开/收起面板；打开、保存、另存为关卡；开始测试按钮在测试中与「退出测试」切换；通过 <see cref="LevelUIManager.Instance"/> 在游戏对象上开关 HUD；返回主菜单通过 <see cref="GameSceneManager"/>。
+/// 地图编辑器内设置 UI：展开/收起面板；新建、打开、保存、另存为关卡；未保存时新建/打开/回主菜单共用确认窗；开始测试按钮在测试中与「退出测试」切换；通过 <see cref="LevelUIManager.Instance"/> 在游戏对象上开关 HUD；返回主菜单通过 <see cref="GameSceneManager"/>。
 /// 展开时按钮文案为 <c>&lt;&lt;</c>，收起时为 <c>&gt;&gt;</c>。
 /// </summary>
 [DisallowMultipleComponent]
@@ -27,6 +27,8 @@ public sealed class EditorSettings : MonoBehaviour
 
     [Tooltip("打开关卡 JSON（默认从 Assets/LevelFiles 选文件）；需 F1 编辑模式。")]
     [SerializeField] Button openLevelButton;
+    [Tooltip("新建空白关卡；有未保存改动时先弹出确认窗。")]
+    [SerializeField] Button newLevelButton;
     [Tooltip("保存：已有路径则覆盖；尚无路径则弹出保存对话框（与 Ctrl+S 首次保存一致）。另存为始终弹窗并可改路径。")]
     [SerializeField] Button saveLevelButton;
     [Tooltip("另存为：始终弹出保存对话框。")]
@@ -46,7 +48,7 @@ public sealed class EditorSettings : MonoBehaviour
     [SerializeField] GameObject unsavedChangesDialog;
     [Tooltip("是：走保存逻辑（首次保存会弹系统保存对话框），成功后再执行待办操作。")]
     [SerializeField] Button unsavedSaveBeforeLeaveButton;
-    [Tooltip("否：不保存，直接执行待办操作（回主菜单或打开关卡）。")]
+    [Tooltip("否：不保存，直接执行待办操作（回主菜单 / 打开 / 新建）。")]
     [SerializeField] Button unsavedLeaveWithoutSavingButton;
 
     [Header("开始测试 / 退出测试 外观")]
@@ -110,6 +112,8 @@ public sealed class EditorSettings : MonoBehaviour
             togglePanelButton.onClick.AddListener(OnTogglePanelClicked);
         if (openLevelButton != null && tilemapEditPainter != null)
             openLevelButton.onClick.AddListener(OnOpenLevelClicked);
+        if (newLevelButton != null)
+            newLevelButton.onClick.AddListener(OnNewLevelClicked);
         if (saveLevelButton != null && tilemapEditPainter != null)
             saveLevelButton.onClick.AddListener(OnSaveLevelClicked);
         if (saveLevelAsButton != null && tilemapEditPainter != null)
@@ -174,6 +178,20 @@ public sealed class EditorSettings : MonoBehaviour
         if (RuntimeTilemapEditPainter.IsPlaytestMode || tilemapEditPainter == null)
             return;
         TryRunWithUnsavedPrompt(OpenLevelFromFileDialog);
+    }
+
+    void OnNewLevelClicked()
+    {
+        if (tilemapEditPainter != null && RuntimeTilemapEditPainter.IsPlaytestMode)
+            tilemapEditPainter.ExitPlaytestToEditMode();
+
+        if (tilemapEditPainter == null)
+        {
+            Debug.LogWarning("[EditorSettings] 未指定 Runtime Tilemap Edit Painter，无法新建关卡。", this);
+            return;
+        }
+
+        TryRunWithUnsavedPrompt(CreateNewLevel);
     }
 
     void OnSaveLevelClicked()
@@ -247,6 +265,17 @@ public sealed class EditorSettings : MonoBehaviour
         tilemapEditPainter.OpenLevelFromFileDialog();
     }
 
+    void CreateNewLevel()
+    {
+        if (tilemapEditPainter == null)
+            return;
+
+        tilemapEditPainter.CreateNewLevel();
+        SyncMaxOrthographicSizeInputFromPainter();
+        SetPlaytestStatusDefault();
+        ApplyPlaytestButtonVisual(RuntimeTilemapEditPainter.IsPlaytestMode);
+    }
+
     void ShowUnsavedChangesDialog()
     {
         if (unsavedChangesDialog != null)
@@ -259,7 +288,7 @@ public sealed class EditorSettings : MonoBehaviour
             unsavedChangesDialog.SetActive(false);
     }
 
-    /// <summary> 供取消按钮 OnClick：关弹窗并放弃待办（打开 / 回主菜单）。 </summary>
+    /// <summary> 供取消按钮 OnClick：关弹窗并放弃待办（打开 / 新建 / 回主菜单）。 </summary>
     public void OnUnsavedChangesDialogCancelled()
     {
         HideUnsavedChangesDialog();
@@ -332,6 +361,8 @@ public sealed class EditorSettings : MonoBehaviour
             togglePanelButton.onClick.RemoveListener(OnTogglePanelClicked);
         if (openLevelButton != null)
             openLevelButton.onClick.RemoveListener(OnOpenLevelClicked);
+        if (newLevelButton != null)
+            newLevelButton.onClick.RemoveListener(OnNewLevelClicked);
         if (saveLevelButton != null)
             saveLevelButton.onClick.RemoveListener(OnSaveLevelClicked);
         if (saveLevelAsButton != null)

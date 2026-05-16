@@ -914,6 +914,44 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
         ClearLevelDocumentDirty();
     }
 
+    /// <summary> 新建空白关卡：清空编辑网格内两层 Tilemap，重置保存路径与镜头默认值。需在编辑模式；测试中请先退出测试。 </summary>
+    public void CreateNewLevel()
+    {
+        if (IsPlaytestMode)
+            return;
+
+        if (!IsEditMode)
+            IsEditMode = true;
+
+        ClearPlaytestTileSnapshot();
+
+        if (groundTilemap != null && objectsTilemap != null)
+        {
+            var bounds = FixedEditGridCellBounds;
+            var z = bounds.zMin;
+            for (var y = bounds.yMin; y < bounds.yMax; y++)
+            {
+                for (var x = bounds.xMin; x < bounds.xMax; x++)
+                {
+                    var cell = new Vector3Int(x, y, z);
+                    groundTilemap.SetTile(cell, null);
+                    objectsTilemap.SetTile(cell, null);
+                }
+            }
+        }
+
+        _activeLevelSavePath = null;
+        _levelMaxOrthographicSize = SokobanLevelSaveData.DefaultMaxOrthographicSize;
+        _lastGridBounds = default;
+        ClearLevelDocumentDirty();
+        ApplyLevelMaxOrthographicSizeToTilemapSettings();
+        OnLevelMaxOrthographicSizeChanged?.Invoke();
+
+        if (tilemapSettings == null)
+            tilemapSettings = FindFirstObjectByType<TilemapSettings>();
+        tilemapSettings?.RefreshFromTilemaps(applyCameraDuringEditMode: true);
+    }
+
     void UpdateEditModeCtrlOrthographicZoom()
     {
         if (!IsEditMode || !editModeCtrlScrollZoomEnabled)
