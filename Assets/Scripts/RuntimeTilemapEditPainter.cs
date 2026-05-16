@@ -650,7 +650,7 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
             TrySaveLevelToPath(assets, _activeLevelSavePath);
     }
 
-    /// <summary> 供 UI「保存」：写入当前已关联的 JSON 文件；若无路径请先「另存为」或 Ctrl+S 首次保存。 </summary>
+    /// <summary> 供 UI「保存」：有已关联路径则直接写入；尚无路径则与 Ctrl+S 相同，弹出保存对话框后落盘并记住路径。 </summary>
     public void SaveCurrentLevelToFile()
     {
         if (IsPlaytestMode)
@@ -667,7 +667,9 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
 
         if (string.IsNullOrEmpty(_activeLevelSavePath))
         {
-            Debug.LogWarning("[Sokoban] 当前没有关卡的保存路径，请使用「另存为」或 Ctrl+S 首次选择文件。", this);
+            if (!LevelSavePathPicker.TryPickSaveJsonPath(out var picked))
+                return;
+            TrySaveLevelToPath(assets, picked);
             return;
         }
 

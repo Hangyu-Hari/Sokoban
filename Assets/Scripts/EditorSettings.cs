@@ -26,7 +26,7 @@ public sealed class EditorSettings : MonoBehaviour
 
     [Tooltip("打开关卡 JSON（默认从 Assets/LevelFiles 选文件）；需 F1 编辑模式。")]
     [SerializeField] Button openLevelButton;
-    [Tooltip("保存到当前已关联的 JSON 文件；无路径时请先另存为或 Ctrl+S 首次保存。")]
+    [Tooltip("保存：已有路径则覆盖；尚无路径则弹出保存对话框（与 Ctrl+S 首次保存一致）。另存为始终弹窗并可改路径。")]
     [SerializeField] Button saveLevelButton;
     [Tooltip("另存为：始终弹出保存对话框。")]
     [SerializeField] Button saveLevelAsButton;
