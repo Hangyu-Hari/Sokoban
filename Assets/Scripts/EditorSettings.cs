@@ -54,6 +54,8 @@ public sealed class EditorSettings : MonoBehaviour
     [SerializeField] string playtestExitLabel = "退出测试";
     [Tooltip("测试状态提示：默认 / 测试中 / 无法测试时的简短说明。")]
     [SerializeField] TextMeshProUGUI playtestStatusLabelTmp;
+    [Tooltip("最大镜头正交 Size（默认 6.5）；会写入关卡 JSON，游玩时由 TilemapSettings 读取。")]
+    [SerializeField] TMP_InputField maxOrthographicSizeInput;
     [SerializeField] Color playtestExitNormalColor = new(0.92f, 0.32f, 0.32f, 1f);
     [SerializeField] Color playtestExitHighlightedColor = new(1f, 0.45f, 0.45f, 1f);
     [SerializeField] Color playtestExitPressedColor = new(0.72f, 0.22f, 0.22f, 1f);
@@ -82,16 +84,21 @@ public sealed class EditorSettings : MonoBehaviour
     void OnEnable()
     {
         RuntimeTilemapEditPainter.PlaytestModeChanged += OnPlaytestModeChanged;
+        if (tilemapEditPainter != null)
+            tilemapEditPainter.OnLevelMaxOrthographicSizeChanged += SyncMaxOrthographicSizeInputFromPainter;
         CacheStartPlaytestButtonColorsIfNeeded();
         var inPlaytest = RuntimeTilemapEditPainter.IsPlaytestMode;
         ApplyPlaytestButtonVisual(inPlaytest);
         ApplyLevelUiManagerActive(inPlaytest);
         RefreshPlaytestStatusLabel(inPlaytest);
+        SyncMaxOrthographicSizeInputFromPainter();
     }
 
     void OnDisable()
     {
         RuntimeTilemapEditPainter.PlaytestModeChanged -= OnPlaytestModeChanged;
+        if (tilemapEditPainter != null)
+            tilemapEditPainter.OnLevelMaxOrthographicSizeChanged -= SyncMaxOrthographicSizeInputFromPainter;
     }
 
     void Awake()
@@ -115,6 +122,8 @@ public sealed class EditorSettings : MonoBehaviour
             unsavedSaveBeforeLeaveButton.onClick.AddListener(OnUnsavedSaveBeforeLeaveClicked);
         if (unsavedLeaveWithoutSavingButton != null)
             unsavedLeaveWithoutSavingButton.onClick.AddListener(OnUnsavedLeaveWithoutSavingClicked);
+        if (maxOrthographicSizeInput != null)
+            maxOrthographicSizeInput.onEndEdit.AddListener(OnMaxOrthographicSizeInputEndEdit);
         HideUnsavedChangesDialog();
     }
 
@@ -301,6 +310,7 @@ public sealed class EditorSettings : MonoBehaviour
     {
         HideUnsavedChangesDialog();
         RefreshPlaytestStatusLabel(RuntimeTilemapEditPainter.IsPlaytestMode);
+        SyncMaxOrthographicSizeInputFromPainter();
         EnsureLevelUiManagerDefaultHidden();
         EnsureToggleButtonLabelTmp();
         EnsurePlaytestButtonLabelTmp();
@@ -334,6 +344,35 @@ public sealed class EditorSettings : MonoBehaviour
             unsavedSaveBeforeLeaveButton.onClick.RemoveListener(OnUnsavedSaveBeforeLeaveClicked);
         if (unsavedLeaveWithoutSavingButton != null)
             unsavedLeaveWithoutSavingButton.onClick.RemoveListener(OnUnsavedLeaveWithoutSavingClicked);
+        if (maxOrthographicSizeInput != null)
+            maxOrthographicSizeInput.onEndEdit.RemoveListener(OnMaxOrthographicSizeInputEndEdit);
+        if (tilemapEditPainter != null)
+            tilemapEditPainter.OnLevelMaxOrthographicSizeChanged -= SyncMaxOrthographicSizeInputFromPainter;
+    }
+
+    void SyncMaxOrthographicSizeInputFromPainter()
+    {
+        if (maxOrthographicSizeInput == null)
+            return;
+
+        var value = tilemapEditPainter != null
+            ? tilemapEditPainter.LevelMaxOrthographicSize
+            : SokobanLevelSaveData.DefaultMaxOrthographicSize;
+        maxOrthographicSizeInput.SetTextWithoutNotify(value.ToString("0.##"));
+    }
+
+    void OnMaxOrthographicSizeInputEndEdit(string text)
+    {
+        if (tilemapEditPainter == null)
+            return;
+
+        if (!float.TryParse(text, out var value))
+        {
+            SyncMaxOrthographicSizeInputFromPainter();
+            return;
+        }
+
+        tilemapEditPainter.SetLevelMaxOrthographicSize(value);
     }
 
     void CacheStartPlaytestButtonColorsIfNeeded()

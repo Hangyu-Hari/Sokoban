@@ -168,6 +168,7 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
 
     bool _levelDocumentDirty;
     string _lastPublishedLevelDocumentTitle;
+    float _levelMaxOrthographicSize = SokobanLevelSaveData.DefaultMaxOrthographicSize;
 
     /// <summary> 点击「开始测试」前在 <see cref="FixedEditGridCellBounds"/> 内拍的瓦片快照；退出测试时写回（与 <c>GetTilesBlock</c> 相同的一维布局）。 </summary>
     BoundsInt _playtestSnapshotBounds;
@@ -188,6 +189,12 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
 
     /// <summary> 标题文案变化时触发（与 <see cref="levelDocumentTitleLabels"/> 同步刷新）。 </summary>
     public event Action OnLevelDocumentTitleChanged;
+
+    /// <summary> 关卡 JSON 中的最大镜头正交 Size；默认 <see cref="SokobanLevelSaveData.DefaultMaxOrthographicSize"/>。 </summary>
+    public float LevelMaxOrthographicSize => _levelMaxOrthographicSize;
+
+    /// <summary> <see cref="LevelMaxOrthographicSize"/> 变化时（含打开关卡）。 </summary>
+    public event Action OnLevelMaxOrthographicSizeChanged;
 
     /// <summary> 编辑用固定网格：最小角 <c>(0,0,0)</c>，宽高见 <see cref="fixedEditGridCellCount"/>。 </summary>
     public BoundsInt FixedEditGridCellBounds
@@ -367,6 +374,27 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
             _orthographicZoomReferenceSize = Mathf.Max(1e-4f, cam.orthographicSize);
 
         RefreshLevelDocumentTitleUi();
+        ApplyLevelMaxOrthographicSizeToTilemapSettings();
+    }
+
+    /// <summary> 供编辑器 InputField：修改最大镜头并标记未保存。 </summary>
+    public void SetLevelMaxOrthographicSize(float value)
+    {
+        var clamped = Mathf.Max(0.1f, value);
+        if (Mathf.Approximately(_levelMaxOrthographicSize, clamped))
+            return;
+
+        _levelMaxOrthographicSize = clamped;
+        MarkLevelDocumentDirty();
+        ApplyLevelMaxOrthographicSizeToTilemapSettings();
+        OnLevelMaxOrthographicSizeChanged?.Invoke();
+    }
+
+    public void ApplyLevelMaxOrthographicSizeToTilemapSettings()
+    {
+        if (tilemapSettings == null)
+            tilemapSettings = FindFirstObjectByType<TilemapSettings>();
+        tilemapSettings?.SetMaxOrthographicSize(_levelMaxOrthographicSize);
     }
 
     void WireToolModeButtons()
@@ -719,6 +747,7 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
                 FixedEditGridCellBounds,
                 assets,
                 path,
+                _levelMaxOrthographicSize,
                 out var err))
         {
             Debug.LogWarning("[Sokoban] 保存失败：" + err, this);
@@ -867,11 +896,16 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
                 objectsTilemap,
                 FixedEditGridCellBounds,
                 assets,
+                out var loadedMaxOrtho,
                 out var err))
         {
             Debug.LogWarning("[Sokoban] 打开关卡失败：" + err, this);
             return;
         }
+
+        _levelMaxOrthographicSize = loadedMaxOrtho;
+        ApplyLevelMaxOrthographicSizeToTilemapSettings();
+        OnLevelMaxOrthographicSizeChanged?.Invoke();
 
         tilemapSettings?.RefreshFromTilemaps(applyCameraDuringEditMode: true);
         _lastGridBounds = default;
@@ -965,20 +999,8 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
         if (!cam.orthographic || groundTilemap == null || !TryGetFixedEditGridPlaneMinMax(out var gx0, out var gx1, out var gy0, out var gy1))
             return;
 
-        var planeZ = groundTilemap.transform.position.z;
-        for (var iter = 0; iter < 8; iter++)
-        {
-            if (!TryGetCameraViewPlaneMinMax(cam, planeZ, out var vx0, out var vx1, out var vy0, out var vy1))
-                return;
-
-            var dx = Compute1DClampDelta(vx0, vx1, gx0, gx1);
-            var dy = Compute1DClampDelta(vy0, vy1, gy0, gy1);
-            if (Mathf.Abs(dx) < 1e-5f && Mathf.Abs(dy) < 1e-5f)
-                break;
-
-            var p = cam.transform.position;
-            cam.transform.position = new Vector3(p.x + dx, p.y + dy, p.z);
-        }
+        SokobanOrthographicCameraUtility.ClampPositionToWorldBounds(
+            cam, gx0, gx1, gy0, gy1, groundTilemap.transform.position.z);
     }
 
     bool TryGetFixedEditGridPlaneMinMax(out float minX, out float maxX, out float minY, out float maxY)
@@ -1038,61 +1060,6 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
         minY = yMin;
         maxY = yMax;
         return true;
-    }
-
-    static bool TryGetCameraViewPlaneMinMax(Camera cam, float planeZ, out float minX, out float maxX, out float minY, out float maxY)
-    {
-        minX = minY = float.PositiveInfinity;
-        maxX = maxY = float.NegativeInfinity;
-
-        var plane = new Plane(Vector3.forward, new Vector3(0f, 0f, planeZ));
-
-        var xMin = float.PositiveInfinity;
-        var xMax = float.NegativeInfinity;
-        var yMin = float.PositiveInfinity;
-        var yMax = float.NegativeInfinity;
-
-        void Corner(Vector2 vp)
-        {
-            var ray = cam.ViewportPointToRay(new Vector3(vp.x, vp.y, 0f));
-            if (!plane.Raycast(ray, out var dist))
-                return;
-            var p = ray.GetPoint(dist);
-            xMin = Mathf.Min(xMin, p.x);
-            xMax = Mathf.Max(xMax, p.x);
-            yMin = Mathf.Min(yMin, p.y);
-            yMax = Mathf.Max(yMax, p.y);
-        }
-
-        Corner(new Vector2(0f, 0f));
-        Corner(new Vector2(1f, 0f));
-        Corner(new Vector2(0f, 1f));
-        Corner(new Vector2(1f, 1f));
-
-        if (float.IsPositiveInfinity(xMin))
-            return false;
-
-        minX = xMin;
-        maxX = xMax;
-        minY = yMin;
-        maxY = yMax;
-        return true;
-    }
-
-    static float Compute1DClampDelta(float vmin, float vmax, float boundMin, float boundMax)
-    {
-        var span = vmax - vmin;
-        var boundSpan = boundMax - boundMin;
-        const float eps = 1e-4f;
-        if (span > boundSpan + eps)
-            return 0.5f * (boundMin + boundMax - vmin - vmax);
-
-        var delta = 0f;
-        if (vmin < boundMin)
-            delta += boundMin - vmin;
-        if (vmax + delta > boundMax)
-            delta += boundMax - (vmax + delta);
-        return delta;
     }
 
     static bool TryScreenToWorldOnGroundPlane(Camera cam, Tilemap tm, Vector3 screenPosition, out Vector3 world)

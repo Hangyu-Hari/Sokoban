@@ -25,6 +25,8 @@ public sealed class SokobanSavedCell
 [Serializable]
 public sealed class SokobanLevelSaveData
 {
+    public const float DefaultMaxOrthographicSize = 6.5f;
+
     public int formatVersion = 2;
     public int boundsXMin;
     public int boundsYMin;
@@ -32,8 +34,13 @@ public sealed class SokobanLevelSaveData
     public int boundsSizeX;
     public int boundsSizeY;
     public int boundsSizeZ;
+    /// <summary> 大地图时的镜头正交 Size 上限；≤0 表示使用 <see cref="DefaultMaxOrthographicSize"/>。 </summary>
+    public float maxOrthographicSize = DefaultMaxOrthographicSize;
     /// <summary> 仅包含有瓦片的格子（任一层非空）。 </summary>
     public SokobanSavedCell[] filledCells;
+
+    public static float ResolveMaxOrthographicSize(float savedValue) =>
+        savedValue > 0.01f ? savedValue : DefaultMaxOrthographicSize;
 }
 
 public static class SokobanLevelSaveFile
@@ -47,6 +54,7 @@ public static class SokobanLevelSaveFile
         BoundsInt cellBounds,
         TileAssetSettings assets,
         string fullPath,
+        float maxOrthographicSize,
         out string error)
     {
         error = null;
@@ -112,6 +120,7 @@ public static class SokobanLevelSaveFile
             boundsSizeX = cellBounds.size.x,
             boundsSizeY = cellBounds.size.y,
             boundsSizeZ = cellBounds.size.z,
+            maxOrthographicSize = Mathf.Max(0.1f, maxOrthographicSize),
             filledCells = filled.ToArray(),
         };
 
@@ -142,9 +151,11 @@ public static class SokobanLevelSaveFile
         Tilemap objects,
         BoundsInt clearAndPlaceWithin,
         TileAssetSettings assets,
+        out float maxOrthographicSize,
         out string error)
     {
         error = null;
+        maxOrthographicSize = SokobanLevelSaveData.DefaultMaxOrthographicSize;
         if (string.IsNullOrEmpty(fullPath) || !File.Exists(fullPath))
         {
             error = "文件不存在或路径为空。";
@@ -196,6 +207,8 @@ public static class SokobanLevelSaveFile
             error = "不支持的 formatVersion：" + data.formatVersion + "（需要 2），或 JSON 无效。";
             return false;
         }
+
+        maxOrthographicSize = SokobanLevelSaveData.ResolveMaxOrthographicSize(data.maxOrthographicSize);
 
         if (data.boundsSizeX <= 0 || data.boundsSizeY <= 0)
         {
@@ -250,6 +263,40 @@ public static class SokobanLevelSaveFile
             objects.SetTile(s.cell, s.o);
         }
 
+        return true;
+    }
+
+    /// <summary> 只读取 JSON 中的镜头设置（不改动 Tilemap）。 </summary>
+    public static bool TryReadMaxOrthographicSize(string fullPath, out float maxOrthographicSize)
+    {
+        maxOrthographicSize = SokobanLevelSaveData.DefaultMaxOrthographicSize;
+        if (string.IsNullOrEmpty(fullPath) || !File.Exists(fullPath))
+            return false;
+
+        string json;
+        try
+        {
+            json = File.ReadAllText(fullPath);
+        }
+        catch
+        {
+            return false;
+        }
+
+        SokobanLevelSaveData data;
+        try
+        {
+            data = JsonUtility.FromJson<SokobanLevelSaveData>(json);
+        }
+        catch
+        {
+            return false;
+        }
+
+        if (data == null || data.formatVersion != 2)
+            return false;
+
+        maxOrthographicSize = SokobanLevelSaveData.ResolveMaxOrthographicSize(data.maxOrthographicSize);
         return true;
     }
 

@@ -1,4 +1,7 @@
+using System;
+using System.IO;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.Tilemaps;
 
 /// <summary>
@@ -18,15 +21,66 @@ public sealed class TilemapSettings : MonoBehaviour
     [SerializeField] bool fitOrthographicSize;
     [Tooltip("边缘空隙间距")]
     [SerializeField] float orthographicPadding = 0.5f;
+    [Tooltip("地图很大时，正交 Size 不超过此值；超出部分通过跟随玩家查看")]
+    [SerializeField, Min(0.1f)] float maxOrthographicSize = 6.5f;
+    [Tooltip("当地图大于当前镜头视野时，镜头跟随玩家，并在地图边缘停止移动")]
+    [SerializeField] bool followPlayerWhenMapExceedsView = true;
+    [Tooltip("进入关卡场景时，从 LevelFiles 下 JSON 读取 maxOrthographicSize（文件名默认与场景名一致）")]
+    [SerializeField] bool loadMaxOrthographicSizeFromLevelJsonOnStart = true;
+    [Tooltip("留空则用当前场景名 + .json，例如 Level 1.json")]
+    [SerializeField] string levelJsonFileName;
 
     SokobanRuntimeState _state;
     bool _winCompleteUiShown;
+    bool _cameraFollowPlayer;
+    Bounds _mapWorldBounds;
+    bool _hasMapWorldBounds;
 
     TileAssetSettings Assets => TileAssetSettings.Instance;
 
     void Start()
     {
+        if (loadMaxOrthographicSizeFromLevelJsonOnStart && !IsEditorScene())
+            TryApplyMaxOrthographicSizeFromLevelJson();
+
         TryBootstrapLevel(applyCameraDuringEditMode: false);
+    }
+
+    /// <summary> 运行时设置最大镜头（编辑器 InputField / 读 JSON 后调用）。 </summary>
+    public void SetMaxOrthographicSize(float size)
+    {
+        maxOrthographicSize = Mathf.Max(0.1f, size);
+        if (_state != null && centerCameraOnStart)
+            ApplyCamera();
+    }
+
+    static bool IsEditorScene()
+    {
+        var name = SceneManager.GetActiveScene().name ?? string.Empty;
+        return name.IndexOf("Editor", StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    bool TryApplyMaxOrthographicSizeFromLevelJson()
+    {
+        var path = ResolveLevelJsonPath();
+        if (string.IsNullOrEmpty(path))
+            return false;
+
+        if (!SokobanLevelSaveFile.TryReadMaxOrthographicSize(path, out var size))
+            return false;
+
+        SetMaxOrthographicSize(size);
+        return true;
+    }
+
+    string ResolveLevelJsonPath()
+    {
+        var fileName = string.IsNullOrWhiteSpace(levelJsonFileName)
+            ? SceneManager.GetActiveScene().name + ".json"
+            : levelJsonFileName.Trim();
+        if (!fileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+            fileName += ".json";
+        return Path.Combine(LevelSavePathPicker.GetDefaultLevelFilesDirectory(), fileName);
     }
 
     /// <summary>
@@ -140,18 +194,77 @@ public sealed class TilemapSettings : MonoBehaviour
             return;
 
         if (!TryGetTilemapsWorldBounds(out var world))
+        {
+            _hasMapWorldBounds = false;
+            _cameraFollowPlayer = false;
             return;
+        }
 
-        var p = cam.transform.position;
-        cam.transform.position = new Vector3(world.center.x, world.center.y, p.z);
-
-        if (!fitOrthographicSize)
-            return;
+        _mapWorldBounds = world;
+        _hasMapWorldBounds = true;
 
         var pad = Mathf.Max(0f, orthographicPadding);
-        var halfH = world.extents.y + pad;
-        var halfW = world.extents.x + pad;
-        cam.orthographicSize = Mathf.Max(halfH, halfW / Mathf.Max(0.0001f, cam.aspect));
+        if (fitOrthographicSize)
+        {
+            var halfH = world.extents.y + pad;
+            var halfW = world.extents.x + pad;
+            var fitSize = Mathf.Max(halfH, halfW / Mathf.Max(0.0001f, cam.aspect));
+            cam.orthographicSize = Mathf.Min(fitSize, maxOrthographicSize);
+        }
+
+        _cameraFollowPlayer = followPlayerWhenMapExceedsView
+            && SokobanOrthographicCameraUtility.MapExceedsOrthographicView(cam, world, pad);
+
+        if (_cameraFollowPlayer && _state != null)
+            FocusCameraOnPlayer(cam);
+        else
+        {
+            var p = cam.transform.position;
+            cam.transform.position = new Vector3(world.center.x, world.center.y, p.z);
+        }
+
+        if (_hasMapWorldBounds)
+            ClampCameraToMapBounds(cam);
+    }
+
+    void LateUpdate()
+    {
+        if (!_cameraFollowPlayer || _state == null || groundTilemap == null)
+            return;
+
+        if (RuntimeTilemapEditPainter.IsEditMode)
+            return;
+
+        var cam = targetCamera != null ? targetCamera : Camera.main;
+        if (cam == null || !cam.orthographic)
+            return;
+
+        FocusCameraOnPlayer(cam);
+    }
+
+    void FocusCameraOnPlayer(Camera cam)
+    {
+        var playerWorld = groundTilemap.GetCellCenterWorld(_state.Player);
+        var p = cam.transform.position;
+        cam.transform.position = new Vector3(playerWorld.x, playerWorld.y, p.z);
+        ClampCameraToMapBounds(cam);
+    }
+
+    void ClampCameraToMapBounds(Camera cam)
+    {
+        if (!_hasMapWorldBounds || groundTilemap == null)
+            return;
+
+        var planeZ = groundTilemap.transform.position.z;
+        var pad = Mathf.Max(0f, orthographicPadding);
+        var b = _mapWorldBounds;
+        SokobanOrthographicCameraUtility.ClampPositionToWorldBounds(
+            cam,
+            b.min.x + pad,
+            b.max.x - pad,
+            b.min.y + pad,
+            b.max.y - pad,
+            planeZ);
     }
 
     bool TryGetTilemapsWorldBounds(out Bounds world)
@@ -249,6 +362,9 @@ public sealed class TilemapSettings : MonoBehaviour
         AudioManager.PlayOneShot("pop_up", AudioManager.AudioGroup.SFX);
 
         SyncTilemapsFromState(assets);
+
+        if (_cameraFollowPlayer)
+            FocusCameraOnPlayer(targetCamera != null ? targetCamera : Camera.main);
 
         if (_state.IsWin() && !_winCompleteUiShown)
         {
