@@ -243,14 +243,41 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
         _hasPlaytestTileSnapshot = true;
     }
 
-    void RestorePlaytestTileSnapshot()
+    void ApplyPlaytestSnapshotTilesToMaps()
     {
         if (!_hasPlaytestTileSnapshot || groundTilemap == null || objectsTilemap == null)
             return;
 
         groundTilemap.SetTilesBlock(_playtestSnapshotBounds, _playtestSnapshotGround);
         objectsTilemap.SetTilesBlock(_playtestSnapshotBounds, _playtestSnapshotObjects);
+    }
+
+    void RestorePlaytestTileSnapshot()
+    {
+        ApplyPlaytestSnapshotTilesToMaps();
         ClearPlaytestTileSnapshot();
+    }
+
+    /// <summary>
+    /// 仍在测试中时：用开始测试时的快照重置盘面并 <see cref="TilemapSettings.RefreshFromTilemaps"/>，不整场景 <c>LoadScene</c>（供 R 键等）。
+    /// </summary>
+    public void RestartPlaytestFromSnapshot()
+    {
+        if (!IsPlaytestMode || !_hasPlaytestTileSnapshot)
+            return;
+
+        if (tilemapSettings == null)
+            tilemapSettings = FindFirstObjectByType<TilemapSettings>();
+
+        ApplyPlaytestSnapshotTilesToMaps();
+        tilemapSettings?.RefreshFromTilemaps(applyCameraDuringEditMode: true);
+
+        var ui = LevelUIManager.Instance;
+        if (ui != null)
+        {
+            ui.HideLevelCompleteUI();
+            ui.HidePauseUI();
+        }
     }
 
     string BuildLevelDocumentTitleText()
