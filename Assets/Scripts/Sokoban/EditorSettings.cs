@@ -1,11 +1,12 @@
 using System.Collections;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 /// <summary>
-/// 地图编辑器内设置 UI：展开/收起面板；打开、保存、另存为关卡；开始测试按钮在测试中与「退出测试」切换；<see cref="levelUIManagerRoot"/> 仅在测试时启用。
+/// 地图编辑器内设置 UI：展开/收起面板；打开、保存、另存为关卡；开始测试按钮在测试中与「退出测试」切换；<see cref="levelUIManagerRoot"/> 仅在测试时启用；返回主菜单通过 <see cref="GameSceneManager"/>。
 /// 展开时按钮文案为 <c>&lt;&lt;</c>，收起时为 <c>&gt;&gt;</c>。
 /// </summary>
 [DisallowMultipleComponent]
@@ -36,6 +37,10 @@ public sealed class EditorSettings : MonoBehaviour
     [SerializeField] RuntimeTilemapEditPainter tilemapEditPainter;
     [Tooltip("挂有 LevelUIManager 的根物体（或整块关卡 HUD）；编辑模式下默认关闭，进入测试时为 true，退出测试为 false")]
     [SerializeField] GameObject levelUIManagerRoot;
+    [Tooltip("返回主菜单：先退出测试（若在测），再通过 GameSceneManager 加载主菜单场景")]
+    [SerializeField] Button returnToMainMenuButton;
+    [Tooltip("主菜单场景名（与 Build Settings / Start.unity 文件名一致，默认 Start）")]
+    [SerializeField] string mainMenuSceneName = "Start";
 
     [Header("开始测试 / 退出测试 外观")]
     [SerializeField] string playtestStartLabel = "开始测试";
@@ -89,6 +94,8 @@ public sealed class EditorSettings : MonoBehaviour
             saveLevelAsButton.onClick.AddListener(OnSaveLevelAsClicked);
         if (startPlaytestButton != null && tilemapEditPainter != null)
             startPlaytestButton.onClick.AddListener(OnStartPlaytestToggleClicked);
+        if (returnToMainMenuButton != null)
+            returnToMainMenuButton.onClick.AddListener(OnReturnToMainMenuClicked);
     }
 
     void OnPlaytestModeChanged(bool inPlaytest)
@@ -131,6 +138,19 @@ public sealed class EditorSettings : MonoBehaviour
         tilemapEditPainter.SaveLevelAs();
     }
 
+    void OnReturnToMainMenuClicked()
+    {
+        if (tilemapEditPainter != null && RuntimeTilemapEditPainter.IsPlaytestMode)
+            tilemapEditPainter.ExitPlaytestToEditMode();
+
+        var name = string.IsNullOrWhiteSpace(mainMenuSceneName) ? "Start" : mainMenuSceneName.Trim();
+
+        if (GameSceneManager.Instance != null)
+            GameSceneManager.Instance.LoadScene(name);
+        else
+            SceneManager.LoadScene(name, LoadSceneMode.Single);
+    }
+
     void Start()
     {
         EnsureToggleButtonLabelTmp();
@@ -159,6 +179,8 @@ public sealed class EditorSettings : MonoBehaviour
             saveLevelAsButton.onClick.RemoveListener(OnSaveLevelAsClicked);
         if (startPlaytestButton != null && tilemapEditPainter != null)
             startPlaytestButton.onClick.RemoveListener(OnStartPlaytestToggleClicked);
+        if (returnToMainMenuButton != null)
+            returnToMainMenuButton.onClick.RemoveListener(OnReturnToMainMenuClicked);
     }
 
     void CacheStartPlaytestButtonColorsIfNeeded()
