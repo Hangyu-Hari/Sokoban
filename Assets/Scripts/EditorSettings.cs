@@ -35,10 +35,18 @@ public sealed class EditorSettings : MonoBehaviour
     [Tooltip("开始测试按钮上的 TMP；可不拖，自动在按钮子级查找。")]
     [SerializeField] TextMeshProUGUI startPlaytestButtonLabelTmp;
     [SerializeField] RuntimeTilemapEditPainter tilemapEditPainter;
-    [Tooltip("返回主菜单：先退出测试（若在测），再通过 GameSceneManager 加载主菜单场景")]
+    [Tooltip("返回主菜单：先退出测试（若在测）；有未保存改动时弹出确认窗，否则直接加载主菜单")]
     [SerializeField] Button returnToMainMenuButton;
     [Tooltip("主菜单场景名（与 Build Settings / Start.unity 文件名一致，默认 Start）")]
     [SerializeField] string mainMenuSceneName = "Start";
+
+    [Header("返回主菜单 · 未保存确认")]
+    [Tooltip("有未保存改动时显示；取消按钮可在 Inspector 里自行绑定关闭本物体。")]
+    [SerializeField] GameObject unsavedChangesDialog;
+    [Tooltip("是：走保存逻辑（首次保存会弹系统保存对话框），成功后再回主菜单。")]
+    [SerializeField] Button unsavedSaveBeforeLeaveButton;
+    [Tooltip("否：不保存，直接回主菜单。")]
+    [SerializeField] Button unsavedLeaveWithoutSavingButton;
 
     [Header("开始测试 / 退出测试 外观")]
     [SerializeField] string playtestStartLabel = "开始测试";
@@ -94,6 +102,11 @@ public sealed class EditorSettings : MonoBehaviour
             startPlaytestButton.onClick.AddListener(OnStartPlaytestToggleClicked);
         if (returnToMainMenuButton != null)
             returnToMainMenuButton.onClick.AddListener(OnReturnToMainMenuClicked);
+        if (unsavedSaveBeforeLeaveButton != null)
+            unsavedSaveBeforeLeaveButton.onClick.AddListener(OnUnsavedSaveBeforeLeaveClicked);
+        if (unsavedLeaveWithoutSavingButton != null)
+            unsavedLeaveWithoutSavingButton.onClick.AddListener(OnUnsavedLeaveWithoutSavingClicked);
+        HideUnsavedChangesDialog();
     }
 
     void OnPlaytestModeChanged(bool inPlaytest)
@@ -141,6 +154,43 @@ public sealed class EditorSettings : MonoBehaviour
         if (tilemapEditPainter != null && RuntimeTilemapEditPainter.IsPlaytestMode)
             tilemapEditPainter.ExitPlaytestToEditMode();
 
+        if (tilemapEditPainter != null && tilemapEditPainter.LevelDocumentIsDirty)
+        {
+            ShowUnsavedChangesDialog();
+            return;
+        }
+
+        LoadMainMenuScene();
+    }
+
+    void OnUnsavedLeaveWithoutSavingClicked()
+    {
+        HideUnsavedChangesDialog();
+        LoadMainMenuScene();
+    }
+
+    void OnUnsavedSaveBeforeLeaveClicked()
+    {
+        HideUnsavedChangesDialog();
+        if (tilemapEditPainter != null && !tilemapEditPainter.TrySaveCurrentLevelToFile())
+            return;
+        LoadMainMenuScene();
+    }
+
+    void ShowUnsavedChangesDialog()
+    {
+        if (unsavedChangesDialog != null)
+            unsavedChangesDialog.SetActive(true);
+    }
+
+    void HideUnsavedChangesDialog()
+    {
+        if (unsavedChangesDialog != null)
+            unsavedChangesDialog.SetActive(false);
+    }
+
+    void LoadMainMenuScene()
+    {
         var name = string.IsNullOrWhiteSpace(mainMenuSceneName) ? "Start" : mainMenuSceneName.Trim();
 
         if (GameSceneManager.Instance != null)
@@ -154,6 +204,7 @@ public sealed class EditorSettings : MonoBehaviour
 
     void Start()
     {
+        HideUnsavedChangesDialog();
         EnsureLevelUiManagerDefaultHidden();
         EnsureToggleButtonLabelTmp();
         EnsurePlaytestButtonLabelTmp();
@@ -183,6 +234,10 @@ public sealed class EditorSettings : MonoBehaviour
             startPlaytestButton.onClick.RemoveListener(OnStartPlaytestToggleClicked);
         if (returnToMainMenuButton != null)
             returnToMainMenuButton.onClick.RemoveListener(OnReturnToMainMenuClicked);
+        if (unsavedSaveBeforeLeaveButton != null)
+            unsavedSaveBeforeLeaveButton.onClick.RemoveListener(OnUnsavedSaveBeforeLeaveClicked);
+        if (unsavedLeaveWithoutSavingButton != null)
+            unsavedLeaveWithoutSavingButton.onClick.RemoveListener(OnUnsavedLeaveWithoutSavingClicked);
     }
 
     void CacheStartPlaytestButtonColorsIfNeeded()

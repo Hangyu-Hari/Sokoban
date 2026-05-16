@@ -10,7 +10,7 @@ using UnityEngine.Tilemaps;
 using UnityEngine.UI;
 
 /// <summary>
-/// Runtime：编辑模式（F1）下，工具为「光标 / 绘制 / 橡皮」三选一；Ctrl+S 见保存逻辑；<see cref="SaveCurrentLevelToFile"/> / <see cref="SaveLevelAs"/> / <see cref="OpenLevelFromFileDialog"/> 供 UI；光标拖曳平移；Ctrl+滚轮缩放；可限制在编辑网格内；绘制或橡皮时左键改 Tilemap。无打开文件时标题为 <c>Unsaved</c> 且开局即视为未落盘（带 <c>*</c>）；有关联文件后，未写入磁盘的改动也会在 <see cref="LevelDocumentTitleText"/> 上加 <c>*</c>。
+/// Runtime：编辑模式（F1）下，工具为「光标 / 绘制 / 橡皮」三选一；Ctrl+S 见保存逻辑；<see cref="SaveCurrentLevelToFile"/> / <see cref="SaveLevelAs"/> / <see cref="OpenLevelFromFileDialog"/> 供 UI；光标拖曳平移；Ctrl+滚轮缩放；可限制在编辑网格内；绘制或橡皮时左键改 Tilemap。无打开文件时标题为 <c>Unsaved</c>；自上次保存或打开后有实际编辑时 <see cref="LevelDocumentTitleText"/> 加 <c>*</c>（<see cref="LevelDocumentIsDirty"/> 同为 true）。
 /// <see cref="StartPlaytestFromCurrentTilemaps"/> 会先拍编辑网格内瓦片快照，<see cref="ExitPlaytestToEditMode"/> 写回后再 <c>Refresh</c>；与是否保存 JSON 无关。
 /// 编辑网格从格坐标 (0,0,0) 起，仅配置宽高格数；开局将相机对准该网格世界中心（见 <see cref="centerCameraOnEditGridAtStart"/>）。
 /// </summary>
@@ -366,9 +366,6 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
         if (cam != null && cam.orthographic)
             _orthographicZoomReferenceSize = Mathf.Max(1e-4f, cam.orthographicSize);
 
-        if (string.IsNullOrEmpty(_activeLevelSavePath))
-            _levelDocumentDirty = true;
-
         RefreshLevelDocumentTitleUi();
     }
 
@@ -651,29 +648,34 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
     }
 
     /// <summary> 供 UI「保存」：有已关联路径则直接写入；尚无路径则与 Ctrl+S 相同，弹出保存对话框后落盘并记住路径。 </summary>
-    public void SaveCurrentLevelToFile()
+    public void SaveCurrentLevelToFile() => TrySaveCurrentLevelToFile();
+
+    /// <summary>
+    /// 与 <see cref="SaveCurrentLevelToFile"/> 相同；成功落盘返回 true。
+    /// 用户取消保存对话框、缺少引用或写入失败时返回 false。
+    /// </summary>
+    public bool TrySaveCurrentLevelToFile()
     {
         if (IsPlaytestMode)
-            return;
+            return false;
 
         if (!IsEditMode)
         {
             Debug.LogWarning("[Sokoban] 请先按 F1 进入编辑模式后再保存。", this);
-            return;
+            return false;
         }
 
         if (!TryGetLevelSaveContext(out var assets))
-            return;
+            return false;
 
         if (string.IsNullOrEmpty(_activeLevelSavePath))
         {
             if (!LevelSavePathPicker.TryPickSaveJsonPath(out var picked))
-                return;
-            TrySaveLevelToPath(assets, picked);
-            return;
+                return false;
+            return TrySaveLevelToPath(assets, picked);
         }
 
-        TrySaveLevelToPath(assets, _activeLevelSavePath);
+        return TrySaveLevelToPath(assets, _activeLevelSavePath);
     }
 
     /// <summary> 供 UI「另存为」：始终弹出保存对话框，成功后切换为当前保存路径。 </summary>
@@ -709,7 +711,7 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
         return true;
     }
 
-    void TrySaveLevelToPath(TileAssetSettings assets, string path)
+    bool TrySaveLevelToPath(TileAssetSettings assets, string path)
     {
         if (!SokobanLevelSaveFile.TrySave(
                 groundTilemap,
@@ -720,12 +722,13 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
                 out var err))
         {
             Debug.LogWarning("[Sokoban] 保存失败：" + err, this);
-            return;
+            return false;
         }
 
         _activeLevelSavePath = path;
         Debug.Log("[Sokoban] 已保存关卡到 " + path, this);
         ClearLevelDocumentDirty();
+        return true;
     }
 
     /// <summary>

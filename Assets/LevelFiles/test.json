@@ -152,6 +152,12 @@
             "objectKey": ""
         },
         {
+            "x": 104,
+            "y": 98,
+            "groundKey": "floor:1",
+            "objectKey": ""
+        },
+        {
             "x": 96,
             "y": 99,
             "groundKey": "wallCap",
@@ -200,6 +206,12 @@
             "objectKey": ""
         },
         {
+            "x": 104,
+            "y": 99,
+            "groundKey": "floor:1",
+            "objectKey": ""
+        },
+        {
             "x": 96,
             "y": 100,
             "groundKey": "wallCap",
@@ -245,6 +257,12 @@
             "x": 103,
             "y": 100,
             "groundKey": "wallCap",
+            "objectKey": ""
+        },
+        {
+            "x": 104,
+            "y": 100,
+            "groundKey": "floor:1",
             "objectKey": ""
         },
         {
@@ -296,6 +314,12 @@
             "objectKey": ""
         },
         {
+            "x": 104,
+            "y": 101,
+            "groundKey": "floor:1",
+            "objectKey": ""
+        },
+        {
             "x": 96,
             "y": 102,
             "groundKey": "wallCap",
@@ -341,6 +365,12 @@
             "x": 103,
             "y": 102,
             "groundKey": "wallCap",
+            "objectKey": ""
+        },
+        {
+            "x": 104,
+            "y": 102,
+            "groundKey": "floor:1",
             "objectKey": ""
         }
     ]
