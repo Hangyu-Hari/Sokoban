@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.UI;
 using UnitySceneManagement = UnityEngine.SceneManagement;
 
 /// <summary>
@@ -15,6 +16,17 @@ public sealed class LevelUIManager : MonoBehaviour
     /// <summary> 常驻单例；未创建时为 null。 </summary>
     public static LevelUIManager Instance => _instance;
 
+    /// <summary>
+    /// 加载 Editor、主菜单等「关卡 HUD 不沿用」的场景前调用，销毁上一场景带来的 DontDestroyOnLoad 实例；
+    /// 否则新场景里的 <see cref="LevelUIManager"/> 会在 <see cref="Awake"/> 中被当作重复而销毁。
+    /// </summary>
+    public static void DestroySingletonInstanceIfAny()
+    {
+        if (_instance == null)
+            return;
+        Destroy(_instance.gameObject);
+    }
+
     [Header("关卡完成")]
     [Tooltip("拖入「完成关」用的整块 UI 根物体（例如一个 Panel）。胜利时会 SetActive(true)；换场景或调用 HideLevelCompleteUI 时会关掉。")]
     [SerializeField] GameObject levelCompleteUI;
@@ -22,6 +34,11 @@ public sealed class LevelUIManager : MonoBehaviour
     [Header("暂停")]
     [Tooltip("拖入暂停界面根物体。激活时关卡操作输入会被忽略（见 IsGameplayInputBlocked）。")]
     [SerializeField] GameObject pauseUI;
+
+    [Header("导航按钮")]
+    [SerializeField] Button[] restartCurrentLevelButtons;
+    [SerializeField] Button[] nextLevelButtons;
+    [SerializeField] Button[] returnToMainMenuButtons;
 
     void Awake()
     {
@@ -36,12 +53,80 @@ public sealed class LevelUIManager : MonoBehaviour
 
         HideLevelCompleteUI();
         HidePauseUI();
+        WireNavigationButtons();
     }
 
     void OnDestroy()
     {
         if (_instance == this)
             _instance = null;
+        UnwireNavigationButtons();
+    }
+
+    void WireNavigationButtons()
+    {
+        AddClicks(restartCurrentLevelButtons, OnRestartButtonClicked);
+        AddClicks(nextLevelButtons, OnNextLevelButtonClicked);
+        AddClicks(returnToMainMenuButtons, OnReturnToMainMenuButtonClicked);
+    }
+
+    void UnwireNavigationButtons()
+    {
+        RemoveClicks(restartCurrentLevelButtons, OnRestartButtonClicked);
+        RemoveClicks(nextLevelButtons, OnNextLevelButtonClicked);
+        RemoveClicks(returnToMainMenuButtons, OnReturnToMainMenuButtonClicked);
+    }
+
+    static void AddClicks(Button[] buttons, UnityEngine.Events.UnityAction handler)
+    {
+        if (buttons == null || handler == null)
+            return;
+
+        foreach (var b in buttons)
+        {
+            if (b == null)
+                continue;
+            b.onClick.RemoveListener(handler);
+            b.onClick.AddListener(handler);
+        }
+    }
+
+    static void RemoveClicks(Button[] buttons, UnityEngine.Events.UnityAction handler)
+    {
+        if (buttons == null || handler == null)
+            return;
+
+        foreach (var b in buttons)
+        {
+            if (b == null)
+                continue;
+            b.onClick.RemoveListener(handler);
+        }
+    }
+
+    /// <summary> 与 R 键一致：测试模式重启测试快照，否则重开当前场景（经 <see cref="GameSceneManager"/>）。 </summary>
+    void OnRestartButtonClicked()
+    {
+        if (RuntimeTilemapEditPainter.IsPlaytestMode)
+        {
+            var painter = FindFirstObjectByType<RuntimeTilemapEditPainter>();
+            painter?.RestartPlaytestFromSnapshot();
+            return;
+        }
+
+        GameSceneManager.Instance?.RestartCurrentScene();
+    }
+
+    /// <summary> 与过关后 Enter 一致：下一关或最后一关回主菜单（经 <see cref="GameSceneManager"/>）。 </summary>
+    void OnNextLevelButtonClicked()
+    {
+        GameSceneManager.Instance?.LoadNextScene();
+    }
+
+    /// <summary> 返回主菜单（经 <see cref="GameSceneManager.LoadMainMenu"/>）。 </summary>
+    void OnReturnToMainMenuButtonClicked()
+    {
+        GameSceneManager.Instance?.LoadMainMenu();
     }
 
     void Update()

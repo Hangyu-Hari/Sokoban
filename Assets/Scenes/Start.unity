@@ -2444,6 +2444,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   nextLevelSceneNameFormat: Level {0}
+  mainMenuSceneName: Start
   resetMaxUnlockedLevelOnGameStart: 1
   applyMainCameraBackgroundColor: 1
   cameraBackgroundColor: {r: 0.6156863, g: 0.5176471, b: 0.49411765, a: 0}
@@ -4617,6 +4618,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   levelCompleteUI: {fileID: 1124893805}
   pauseUI: {fileID: 1957723371}
+  restartCurrentLevelButtons:
+  - {fileID: 4989986}
+  - {fileID: 1755023922}
+  - {fileID: 1707779431}
+  nextLevelButtons:
+  - {fileID: 442276985}
+  returnToMainMenuButtons:
+  - {fileID: 925179008}
+  - {fileID: 2063599429}
 --- !u!1 &1365192553
 GameObject:
   m_ObjectHideFlags: 0

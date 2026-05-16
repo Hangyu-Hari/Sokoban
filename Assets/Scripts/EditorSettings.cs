@@ -146,7 +146,10 @@ public sealed class EditorSettings : MonoBehaviour
         if (GameSceneManager.Instance != null)
             GameSceneManager.Instance.LoadScene(name);
         else
+        {
+            LevelUIManager.DestroySingletonInstanceIfAny();
             SceneManager.LoadScene(name, LoadSceneMode.Single);
+        }
     }
 
     void Start()

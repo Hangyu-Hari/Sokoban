@@ -93,12 +93,10 @@ public sealed class GameSceneManager : MonoBehaviour
         ApplyMainCameraBackground();
     }
 
-    bool ShouldHideLevelUiManagerForScene(UnityScene scene)
+    bool ShouldHideLevelUiForSceneName(string sceneName)
     {
-        if (!scene.IsValid())
+        if (string.IsNullOrEmpty(sceneName))
             return true;
-
-        var name = scene.name ?? string.Empty;
 
         if (hideLevelUiWhenActiveSceneNameContains != null && hideLevelUiWhenActiveSceneNameContains.Length > 0)
         {
@@ -106,12 +104,30 @@ public sealed class GameSceneManager : MonoBehaviour
             {
                 if (string.IsNullOrEmpty(sub))
                     continue;
-                if (name.IndexOf(sub, StringComparison.OrdinalIgnoreCase) >= 0)
+                if (sceneName.IndexOf(sub, StringComparison.OrdinalIgnoreCase) >= 0)
                     return true;
             }
         }
 
         return false;
+    }
+
+    bool ShouldHideLevelUiManagerForScene(UnityScene scene)
+    {
+        if (!scene.IsValid())
+            return true;
+
+        return ShouldHideLevelUiForSceneName(scene.name ?? string.Empty);
+    }
+
+    /// <summary> 进入 Editor / 主菜单前拆掉关卡带来的常驻 UI，让目标场景自己的 LevelUIManager 能正确 Awake。 </summary>
+    void DestroyLevelUIManagerIfEnteringHudHiddenScene(string sceneName)
+    {
+        if (string.IsNullOrWhiteSpace(sceneName))
+            return;
+        if (!ShouldHideLevelUiForSceneName(sceneName.Trim()))
+            return;
+        LevelUIManager.DestroySingletonInstanceIfAny();
     }
 
     void ApplyLevelUiManagerVisibilityForScene(UnityScene scene)
@@ -167,6 +183,19 @@ public sealed class GameSceneManager : MonoBehaviour
         PlayerPrefs.Save();
     }
 
+    /// <summary>加载 Inspector 中配置的<strong>主菜单</strong>场景（与通关后回退菜单、<see cref="mainMenuSceneName"/> 一致）。</summary>
+    public void LoadMainMenu()
+    {
+        var name = string.IsNullOrWhiteSpace(mainMenuSceneName) ? null : mainMenuSceneName.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            Debug.LogWarning("[GameSceneManager] 主菜单场景名未配置（mainMenuSceneName）。", this);
+            return;
+        }
+
+        LoadScene(name);
+    }
+
     /// <summary>加载名为 <paramref name="sceneName"/> 的场景（单场景模式，会卸载当前场景）。</summary>
     public void LoadScene(string sceneName)
     {
@@ -176,7 +205,9 @@ public sealed class GameSceneManager : MonoBehaviour
             return;
         }
 
-        SceneMgr.LoadScene(sceneName.Trim(), LoadMode.Single);
+        var trimmed = sceneName.Trim();
+        DestroyLevelUIManagerIfEnteringHudHiddenScene(trimmed);
+        SceneMgr.LoadScene(trimmed, LoadMode.Single);
         ApplyMainCameraBackground();
     }
 
@@ -229,6 +260,7 @@ public sealed class GameSceneManager : MonoBehaviour
             var menuName = string.IsNullOrWhiteSpace(mainMenuSceneName) ? null : mainMenuSceneName.Trim();
             if (menuName != null && Application.CanStreamedLevelBeLoaded(menuName))
             {
+                DestroyLevelUIManagerIfEnteringHudHiddenScene(menuName);
                 SceneMgr.LoadScene(menuName, LoadMode.Single);
                 ApplyMainCameraBackground();
                 return;
@@ -243,6 +275,7 @@ public sealed class GameSceneManager : MonoBehaviour
             return;
         }
 
+        DestroyLevelUIManagerIfEnteringHudHiddenScene(nextSceneName);
         SceneMgr.LoadScene(nextSceneName, LoadMode.Single);
         ApplyMainCameraBackground();
     }
