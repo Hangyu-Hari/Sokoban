@@ -4815,9 +4815,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   levelCompleteUI: {fileID: 219730929}
   pauseUI: {fileID: 1151642602}
-  hideWhenActiveSceneNameContains:
-  - Start
-  hideWhenBuildIndexLessThan: 1
 --- !u!114 &737235658
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9547,6 +9544,7 @@ MonoBehaviour:
   startPlaytestButton: {fileID: 1850759501}
   startPlaytestButtonLabelTmp: {fileID: 1010022450}
   tilemapEditPainter: {fileID: 406839164}
+  levelUIManagerRoot: {fileID: 737235656}
   playtestStartLabel: "\u5F00\u59CB\u6D4B\u8BD5"
   playtestExitLabel: "\u9000\u51FA\u6D4B\u8BD5"
   playtestExitNormalColor: {r: 0.92, g: 0.32, b: 0.32, a: 1}

@@ -1,4 +1,3 @@
-using System;
 using System.Collections;
 using TMPro;
 using UnityEngine;
@@ -6,7 +5,7 @@ using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 /// <summary>
-/// 地图编辑器内设置 UI：展开/收起面板；打开、保存、另存为关卡；开始测试按钮在测试中与「退出测试」切换（委托 <see cref="RuntimeTilemapEditPainter"/>）。
+/// 地图编辑器内设置 UI：展开/收起面板；打开、保存、另存为关卡；开始测试按钮在测试中与「退出测试」切换；<see cref="levelUIManagerRoot"/> 仅在测试时启用。
 /// 展开时按钮文案为 <c>&lt;&lt;</c>，收起时为 <c>&gt;&gt;</c>。
 /// </summary>
 [DisallowMultipleComponent]
@@ -35,6 +34,8 @@ public sealed class EditorSettings : MonoBehaviour
     [Tooltip("开始测试按钮上的 TMP；可不拖，自动在按钮子级查找。")]
     [SerializeField] TextMeshProUGUI startPlaytestButtonLabelTmp;
     [SerializeField] RuntimeTilemapEditPainter tilemapEditPainter;
+    [Tooltip("挂有 LevelUIManager 的根物体（或整块关卡 HUD）；编辑模式下默认关闭，进入测试时为 true，退出测试为 false")]
+    [SerializeField] GameObject levelUIManagerRoot;
 
     [Header("开始测试 / 退出测试 外观")]
     [SerializeField] string playtestStartLabel = "开始测试";
@@ -63,7 +64,9 @@ public sealed class EditorSettings : MonoBehaviour
     {
         RuntimeTilemapEditPainter.PlaytestModeChanged += OnPlaytestModeChanged;
         CacheStartPlaytestButtonColorsIfNeeded();
-        ApplyPlaytestButtonVisual(RuntimeTilemapEditPainter.IsPlaytestMode);
+        var inPlaytest = RuntimeTilemapEditPainter.IsPlaytestMode;
+        ApplyPlaytestButtonVisual(inPlaytest);
+        ApplyLevelUiManagerActive(inPlaytest);
     }
 
     void OnDisable()
@@ -75,6 +78,7 @@ public sealed class EditorSettings : MonoBehaviour
     {
         EnsureToggleButtonLabelTmp();
         EnsurePlaytestButtonLabelTmp();
+        EnsureLevelUiManagerDefaultHidden();
         if (togglePanelButton != null)
             togglePanelButton.onClick.AddListener(OnTogglePanelClicked);
         if (openLevelButton != null && tilemapEditPainter != null)
@@ -87,7 +91,11 @@ public sealed class EditorSettings : MonoBehaviour
             startPlaytestButton.onClick.AddListener(OnStartPlaytestToggleClicked);
     }
 
-    void OnPlaytestModeChanged(bool inPlaytest) => ApplyPlaytestButtonVisual(inPlaytest);
+    void OnPlaytestModeChanged(bool inPlaytest)
+    {
+        ApplyPlaytestButtonVisual(inPlaytest);
+        ApplyLevelUiManagerActive(inPlaytest);
+    }
 
     void OnStartPlaytestToggleClicked()
     {
@@ -234,6 +242,21 @@ public sealed class EditorSettings : MonoBehaviour
         if (toggleButtonLabelTmp != null || togglePanelButton == null)
             return;
         toggleButtonLabelTmp = togglePanelButton.GetComponentInChildren<TextMeshProUGUI>(true);
+    }
+
+    void ApplyLevelUiManagerActive(bool active)
+    {
+        if (levelUIManagerRoot == null)
+            return;
+        levelUIManagerRoot.SetActive(active);
+    }
+
+    /// <summary> 刚进编辑场景或未测试时 HUD 应保持关闭（见 <see cref="levelUIManagerRoot"/>）。 </summary>
+    void EnsureLevelUiManagerDefaultHidden()
+    {
+        if (levelUIManagerRoot == null || RuntimeTilemapEditPainter.IsPlaytestMode)
+            return;
+        levelUIManagerRoot.SetActive(false);
     }
 
     void EnsurePlaytestButtonLabelTmp()
