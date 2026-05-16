@@ -164,7 +164,7 @@ public sealed class SokobanRuntimeState
     }
 
     /// <summary>
-    /// Ground: wall / floor / goal only. Objects: player / crate only (empty allowed).
+    /// Ground: wall / floor / goal (未完成或<strong>已完成</strong>外观的两种目标瓦片) only. Objects: player / crate only (empty allowed).
     /// Unpainted ground cells are treated as walls.
     /// 多种底墙、单一顶墙在逻辑里都是墙；多种地板都是可走平地（非目标）。
     /// </summary>
@@ -175,6 +175,7 @@ public sealed class SokobanRuntimeState
         TileBase wallCapTile,
         TileBase[] floorTiles,
         TileBase goalUncompletedTile,
+        TileBase goalCompletedTile,
         TileBase playerTile,
         TileBase boxTile,
         out SokobanRuntimeState state,
@@ -240,7 +241,7 @@ public sealed class SokobanRuntimeState
                     SetWall(x, y, false);
                     SetGoal(x, y, false);
                 }
-                else if (gt == goalUncompletedTile)
+                else if (gt == goalUncompletedTile || gt == goalCompletedTile)
                 {
                     SetWall(x, y, false);
                     SetGoal(x, y, true);
@@ -252,7 +253,8 @@ public sealed class SokobanRuntimeState
                 }
                 else
                 {
-                    error = $"Unknown ground tile at {cell}: {gt.name}. 地面只允许：底墙列表里任一种、顶墙、地板列表里任一种、目标（未完成），或留空（虚空当墙）。";
+                    error =
+                        $"Unknown ground tile at {cell}: {gt.name}. 地面只允许：底墙列表里任一种、顶墙、地板列表里任一种、目标（未完成或已完成外观），或留空（虚空当墙）。";
                     return false;
                 }
             }

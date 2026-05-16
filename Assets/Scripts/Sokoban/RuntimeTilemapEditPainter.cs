@@ -608,6 +608,38 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
         ClearLevelDocumentDirty();
     }
 
+    /// <summary>
+    /// 供 UI「开始测试」：按当前 Tilemap 状态重新载入关卡逻辑并进入游玩（退出编辑模式）；
+    /// 会关闭胜利与暂停界面。解析失败时不退出编辑模式；具体原因由 <see cref="TilemapSettings.RefreshFromTilemaps"/> 打日志。
+    /// </summary>
+    public void StartPlaytestFromCurrentTilemaps()
+    {
+        if (tilemapSettings == null)
+            tilemapSettings = FindFirstObjectByType<TilemapSettings>();
+
+        if (tilemapSettings == null)
+        {
+            Debug.LogWarning("[Sokoban] 未找到 TilemapSettings，无法开始测试。", this);
+            return;
+        }
+
+        if (!tilemapSettings.RefreshFromTilemaps(applyCameraDuringEditMode: true))
+            return;
+
+        IsEditMode = false;
+        _cursorPanDragging = false;
+        _lastGridBounds = default;
+
+        var ui = LevelUIManager.Instance;
+        if (ui != null)
+        {
+            ui.HideLevelCompleteUI();
+            ui.HidePauseUI();
+        }
+
+        RefreshToolModeButtonVisuals();
+    }
+
     /// <summary> 供 UI「打开关卡」按钮：从 JSON 读入当前编辑网格；需已在编辑模式（F1）。 </summary>
     public void OpenLevelFromFileDialog()
     {
@@ -639,7 +671,7 @@ public sealed class RuntimeTilemapEditPainter : MonoBehaviour
             return;
         }
 
-        tilemapSettings?.RefreshFromTilemaps();
+        tilemapSettings?.RefreshFromTilemaps(applyCameraDuringEditMode: true);
         _lastGridBounds = default;
         _activeLevelSavePath = path;
         Debug.Log("[Sokoban] 已打开关卡：" + path, this);

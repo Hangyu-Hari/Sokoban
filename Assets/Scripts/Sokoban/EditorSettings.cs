@@ -5,7 +5,7 @@ using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 /// <summary>
-/// 地图编辑器内设置 UI：展开/收起面板；打开、保存、另存为关卡（委托 <see cref="RuntimeTilemapEditPainter"/>）。
+/// 地图编辑器内设置 UI：展开/收起面板；打开、保存、另存为关卡；开始测试（委托 <see cref="RuntimeTilemapEditPainter"/>）。
 /// 展开时按钮文案为 <c>&lt;&lt;</c>，收起时为 <c>&gt;&gt;</c>。
 /// </summary>
 [DisallowMultipleComponent]
@@ -29,6 +29,8 @@ public sealed class EditorSettings : MonoBehaviour
     [SerializeField] Button saveLevelButton;
     [Tooltip("另存为：始终弹出保存对话框。")]
     [SerializeField] Button saveLevelAsButton;
+    [Tooltip("开始测试：按当前 Tilemap 状态进入游玩（退出 F1 编辑）；并关闭胜利/暂停界面。")]
+    [SerializeField] Button startPlaytestButton;
     [SerializeField] RuntimeTilemapEditPainter tilemapEditPainter;
 
     [Header("面板 anchoredPosition.x")]
@@ -56,6 +58,8 @@ public sealed class EditorSettings : MonoBehaviour
             saveLevelButton.onClick.AddListener(tilemapEditPainter.SaveCurrentLevelToFile);
         if (saveLevelAsButton != null && tilemapEditPainter != null)
             saveLevelAsButton.onClick.AddListener(tilemapEditPainter.SaveLevelAs);
+        if (startPlaytestButton != null && tilemapEditPainter != null)
+            startPlaytestButton.onClick.AddListener(tilemapEditPainter.StartPlaytestFromCurrentTilemaps);
     }
 
     void Start()
@@ -81,6 +85,8 @@ public sealed class EditorSettings : MonoBehaviour
             saveLevelButton.onClick.RemoveListener(tilemapEditPainter.SaveCurrentLevelToFile);
         if (saveLevelAsButton != null && tilemapEditPainter != null)
             saveLevelAsButton.onClick.RemoveListener(tilemapEditPainter.SaveLevelAs);
+        if (startPlaytestButton != null && tilemapEditPainter != null)
+            startPlaytestButton.onClick.RemoveListener(tilemapEditPainter.StartPlaytestFromCurrentTilemaps);
     }
 
     void OnTogglePanelClicked()

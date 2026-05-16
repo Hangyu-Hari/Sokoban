@@ -26,13 +26,18 @@ public sealed class TilemapSettings : MonoBehaviour
 
     void Start()
     {
-        TryBootstrapLevel();
+        TryBootstrapLevel(applyCameraDuringEditMode: false);
     }
 
-    /// <summary> 从当前 Tilemap 重新解析关卡（例如 Runtime 编辑后调用）。 </summary>
-    public bool RefreshFromTilemaps() => TryBootstrapLevel();
+    /// <summary>
+    /// 从当前 Tilemap 重新解析关卡（例如 Runtime 编辑后调用）。
+    /// 编辑模式（F1）下默认<strong>不</strong>调用 <see cref="ApplyCamera"/>，避免落笔反复刷新时相机被居中/缩放；
+    /// 需要时传入 <paramref name="applyCameraDuringEditMode"/> 为 true（例如打开关卡、开始测试）。
+    /// </summary>
+    public bool RefreshFromTilemaps(bool applyCameraDuringEditMode = false) =>
+        TryBootstrapLevel(applyCameraDuringEditMode);
 
-    bool TryBootstrapLevel()
+    bool TryBootstrapLevel(bool applyCameraDuringEditMode)
     {
         var assets = Assets;
         if (assets == null)
@@ -66,12 +71,15 @@ public sealed class TilemapSettings : MonoBehaviour
                 assets.WallCapTile,
                 assets.FloorTiles,
                 assets.GoalUncompletedTile,
+                assets.GoalCompletedTile,
                 assets.PlayerTile,
                 assets.BoxTile,
                 out _state,
                 out var err))
         {
-            Debug.LogError("[Sokoban] " + err, this);
+            // 编辑模式下地图常处于「未放齐玩家」等半成品状态；落笔也会反复 Refresh，不应刷屏报错。
+            if (!RuntimeTilemapEditPainter.IsEditMode)
+                Debug.LogError("[Sokoban] " + err, this);
             _state = null;
             return false;
         }
@@ -79,7 +87,8 @@ public sealed class TilemapSettings : MonoBehaviour
         SokobanRuntimeState.ApplyWallBaseAndCap(groundTilemap, assets.WallBaseTiles, assets.WallCapTile);
         SyncTilemapsFromState(assets);
 
-        if (centerCameraOnStart)
+        if (centerCameraOnStart
+            && (!RuntimeTilemapEditPainter.IsEditMode || applyCameraDuringEditMode))
             ApplyCamera();
 
         _winCompleteUiShown = false;
