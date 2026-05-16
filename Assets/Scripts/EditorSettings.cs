@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using TMPro;
 using UnityEngine;
@@ -40,12 +41,12 @@ public sealed class EditorSettings : MonoBehaviour
     [Tooltip("主菜单场景名（与 Build Settings / Start.unity 文件名一致，默认 Start）")]
     [SerializeField] string mainMenuSceneName = "Start";
 
-    [Header("返回主菜单 · 未保存确认")]
+    [Header("未保存确认")]
     [Tooltip("有未保存改动时显示；取消按钮可在 Inspector 里自行绑定关闭本物体。")]
     [SerializeField] GameObject unsavedChangesDialog;
-    [Tooltip("是：走保存逻辑（首次保存会弹系统保存对话框），成功后再回主菜单。")]
+    [Tooltip("是：走保存逻辑（首次保存会弹系统保存对话框），成功后再执行待办操作。")]
     [SerializeField] Button unsavedSaveBeforeLeaveButton;
-    [Tooltip("否：不保存，直接回主菜单。")]
+    [Tooltip("否：不保存，直接执行待办操作（回主菜单或打开关卡）。")]
     [SerializeField] Button unsavedLeaveWithoutSavingButton;
 
     [Header("开始测试 / 退出测试 外观")]
@@ -70,6 +71,7 @@ public sealed class EditorSettings : MonoBehaviour
     Coroutine _transitionRoutine;
     ColorBlock _cachedStartPlaytestButtonColors;
     bool _cachedStartPlaytestButtonColorsStored;
+    Action _unsavedPendingAction;
 
     void OnEnable()
     {
@@ -132,7 +134,7 @@ public sealed class EditorSettings : MonoBehaviour
     {
         if (RuntimeTilemapEditPainter.IsPlaytestMode || tilemapEditPainter == null)
             return;
-        tilemapEditPainter.OpenLevelFromFileDialog();
+        TryRunWithUnsavedPrompt(OpenLevelFromFileDialog);
     }
 
     void OnSaveLevelClicked()
@@ -154,27 +156,56 @@ public sealed class EditorSettings : MonoBehaviour
         if (tilemapEditPainter != null && RuntimeTilemapEditPainter.IsPlaytestMode)
             tilemapEditPainter.ExitPlaytestToEditMode();
 
-        if (tilemapEditPainter != null && tilemapEditPainter.LevelDocumentIsDirty)
-        {
-            ShowUnsavedChangesDialog();
-            return;
-        }
-
-        LoadMainMenuScene();
+        TryRunWithUnsavedPrompt(LoadMainMenuScene);
     }
 
     void OnUnsavedLeaveWithoutSavingClicked()
     {
         HideUnsavedChangesDialog();
-        LoadMainMenuScene();
+        RunPendingUnsavedAction();
     }
 
     void OnUnsavedSaveBeforeLeaveClicked()
     {
         HideUnsavedChangesDialog();
         if (tilemapEditPainter != null && !tilemapEditPainter.TrySaveCurrentLevelToFile())
+        {
+            ClearPendingUnsavedAction();
             return;
-        LoadMainMenuScene();
+        }
+
+        RunPendingUnsavedAction();
+    }
+
+    void TryRunWithUnsavedPrompt(Action action)
+    {
+        if (action == null)
+            return;
+
+        if (tilemapEditPainter != null && tilemapEditPainter.LevelDocumentIsDirty)
+        {
+            _unsavedPendingAction = action;
+            ShowUnsavedChangesDialog();
+            return;
+        }
+
+        action();
+    }
+
+    void RunPendingUnsavedAction()
+    {
+        var action = _unsavedPendingAction;
+        ClearPendingUnsavedAction();
+        action?.Invoke();
+    }
+
+    void ClearPendingUnsavedAction() => _unsavedPendingAction = null;
+
+    void OpenLevelFromFileDialog()
+    {
+        if (tilemapEditPainter == null)
+            return;
+        tilemapEditPainter.OpenLevelFromFileDialog();
     }
 
     void ShowUnsavedChangesDialog()
@@ -187,6 +218,13 @@ public sealed class EditorSettings : MonoBehaviour
     {
         if (unsavedChangesDialog != null)
             unsavedChangesDialog.SetActive(false);
+    }
+
+    /// <summary> 供取消按钮 OnClick：关弹窗并放弃待办（打开 / 回主菜单）。 </summary>
+    public void OnUnsavedChangesDialogCancelled()
+    {
+        HideUnsavedChangesDialog();
+        ClearPendingUnsavedAction();
     }
 
     void LoadMainMenuScene()
